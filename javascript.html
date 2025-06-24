@@ -1,0 +1,138 @@
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  // =================================
+  //      Global State & Selectors
+  // =================================
+  let currentUser = null;
+  const views = document.querySelectorAll('.view');
+  const navLinks = document.querySelectorAll('.nav-link');
+  const loader = document.getElementById('loader');
+  const galleryGrid = document.getElementById('gallery-grid');
+  const userProfileWidget = document.querySelector('.user-profile-widget');
+
+  // =================================
+  //      UI Helper Functions
+  // =================================
+
+  const showLoader = () => loader.style.display = 'flex';
+  const hideLoader = () => loader.style.display = 'none';
+
+  /**
+   * Switches the visible view.
+   * @param {string} viewId The ID of the view to show (e.g., 'gallery-view').
+   */
+  const switchView = (viewId) => {
+    views.forEach(view => {
+      view.style.display = view.id === viewId ? 'block' : 'none';
+    });
+    // Update active nav link
+    navLinks.forEach(link => {
+      link.classList.toggle('active', link.getAttribute('href') === `#${viewId.replace('-view', '')}`);
+    });
+  };
+  
+  // Simple hash-based router
+  const router = () => {
+    const hash = window.location.hash.slice(1) || 'gallery';
+    switchView(`${hash}-view`);
+  };
+
+
+  // =================================
+  //      Rendering Functions
+  // =================================
+
+  /**
+   * Renders the user login/profile widget in the header.
+   */
+  const renderUserWidget = () => {
+    if (currentUser) {
+      userProfileWidget.innerHTML = `
+        <div class="clay-box" style="padding: 5px 15px; text-align: left;">
+          <p style="font-weight: bold;">${currentUser.name || currentUser.email}</p>
+          <a href="#profile" style="font-size: 0.9em; color: var(--action-color);">הפרופיל שלי</a>
+        </div>
+      `;
+    } else {
+      userProfileWidget.innerHTML = `
+         <button id="login-btn" class="clay-button clay-button-primary">התחברות</button>
+      `;
+      // TODO: Add event listener for login button.
+    }
+  };
+
+  /**
+   * Renders the gallery with artifact cards.
+   * @param {Array<object>} artifacts - Array of artifact data.
+   */
+  const renderGallery = (artifacts) => {
+    if (!artifacts || artifacts.length === 0) {
+      galleryGrid.innerHTML = '<p>עדיין אין תוצרים בגלריה. היו הראשונים להגיש!</p>';
+      return;
+    }
+
+    galleryGrid.innerHTML = artifacts.map(artifact => `
+      <div class="clay-card artifact-card">
+        <div class="card-image">
+          <img src="${artifact.previewUrl}" alt="${artifact.title}">
+        </div>
+        <div class="card-content">
+          <h3>${artifact.title}</h3>
+          <p>כלי: ${artifact.tool}</p>
+          <div class="tags">
+            ${artifact.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  };
+
+  // =================================
+  //      API Call Functions
+  // =================================
+
+  /**
+   * Fetches initial data when the app loads.
+   */
+  const initialize = () => {
+    showLoader();
+    google.script.run
+      .withSuccessHandler(user => {
+        currentUser = user;
+        renderUserWidget();
+        // Load gallery regardless of login status
+        google.script.run
+          .withSuccessHandler(artifacts => {
+            renderGallery(artifacts);
+            router(); // Call router after data is loaded
+            hideLoader();
+          })
+          .withFailureHandler(err => {
+            console.error('Error fetching gallery:', err);
+            hideLoader();
+            galleryGrid.innerHTML = '<p>שגיאה בטעינת הגלריה. נסו לרענן את הדף.</p>';
+          })
+          .getGalleryArtifacts(null);
+      })
+      .withFailureHandler(err => {
+        console.error('Error fetching user data:', err);
+        // Still try to load gallery for guests
+        initialize(); 
+      })
+      .getUserData();
+  };
+
+
+  // =================================
+  //      Event Listeners
+  // =================================
+
+  // Listen for hash changes to navigate
+  window.addEventListener('hashchange', router);
+
+  // Initial load
+  initialize();
+
+});
+</script> 

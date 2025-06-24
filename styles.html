@@ -1,0 +1,254 @@
+<style>
+/* =================================
+   כללי והגדרות בסיס
+   ================================= */
+:root {
+  --bg-color: #f0f2f5;
+  --primary-color: #e6e8ef;
+  --shadow-light: rgba(255, 255, 255, 0.9);
+  --shadow-dark: rgba(174, 174, 192, 0.4);
+  --text-color: #333;
+  --accent-color-1: #d1d9e6;
+  --accent-color-2: #c3cfe2;
+  --action-color: #6d5dfc;
+  --action-color-light: #8b7ffc;
+
+  --pastel-blue: #a2d2ff;
+  --pastel-lavender: #d8bfd8;
+  --pastel-mint: #98ff98;
+  --pastel-pink: #ffb6c1;
+  
+  --border-radius: 20px;
+  --transition-speed: 0.3s;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Heebo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  direction: rtl;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+/* =================================
+   פריסה כללית (Layout)
+   ================================= */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: var(--primary-color);
+  box-shadow: 0 4px 12px var(--shadow-dark);
+  margin: 20px;
+  border-radius: var(--border-radius);
+}
+
+.logo h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--action-color);
+}
+
+.main-nav a {
+  margin: 0 15px;
+  text-decoration: none;
+  color: var(--text-color);
+  font-weight: 500;
+  padding: 8px 15px;
+  border-radius: 12px;
+  transition: all var(--transition-speed) ease;
+}
+
+.main-nav a.active, .main-nav a:hover {
+  background-color: var(--action-color);
+  color: white;
+  box-shadow: inset 3px 3px 5px rgba(0,0,0,0.2), 
+              inset -3px -3px 5px rgba(255,255,255,0.7);
+}
+
+#app-container {
+  padding: 0 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.app-footer {
+  text-align: center;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  color: #888;
+}
+
+
+/* =================================
+   אפקט קליימורפיזם (Claymorphism)
+   ================================= */
+.clay-card, .clay-button, .clay-input, .clay-box {
+  background: var(--primary-color);
+  border-radius: var(--border-radius);
+  box-shadow: -10px -10px 20px var(--shadow-light), 
+              10px 10px 20px var(--shadow-dark);
+  transition: all var(--transition-speed) ease;
+  position: relative;
+}
+
+.clay-card:hover {
+  transform: translateY(-5px);
+  box-shadow: -12px -12px 24px var(--shadow-light), 
+              12px 12px 24px var(--shadow-dark);
+}
+
+.clay-button {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 12px 24px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.clay-button:active {
+  box-shadow: inset -8px -8px 16px var(--shadow-light), 
+              inset 8px 8px 16px var(--shadow-dark);
+  transform: translateY(2px);
+}
+
+.clay-button-primary {
+    background-color: var(--action-color);
+    color: white;
+}
+.clay-button-primary:hover {
+    background-color: var(--action-color-light);
+}
+
+.clay-input {
+    width: 100%;
+    padding: 12px 20px;
+    border: none;
+    background: var(--bg-color);
+    box-shadow: inset -5px -5px 9px var(--shadow-light), 
+                inset 5px 5px 9px var(--shadow-dark);
+}
+
+/* =================================
+   רכיבים ספציפיים
+   ================================= */
+.view {
+  padding: 2rem;
+  margin-top: 2rem;
+  background: var(--primary-color);
+  border-radius: var(--border-radius);
+  box-shadow: -10px -10px 20px var(--shadow-light), 
+              10px 10px 20px var(--shadow-dark);
+}
+
+.view h2 {
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    color: var(--action-color);
+}
+
+/* --- גלריה --- */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.artifact-card {
+  overflow: hidden;
+}
+
+.artifact-card .card-image {
+  width: 100%;
+  height: 200px;
+  background-color: var(--accent-color-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.artifact-card .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.artifact-card .card-content {
+  padding: 1rem;
+}
+.artifact-card h3 {
+  margin-bottom: 0.5rem;
+}
+.artifact-card .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 1rem;
+}
+.artifact-card .tag {
+  background-color: var(--pastel-blue);
+  color: var(--text-color);
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  box-shadow: -2px -2px 4px var(--shadow-light), 
+              2px 2px 4px var(--shadow-dark);
+}
+
+/* --- Loader --- */
+.loader-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(240, 242, 245, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+.spinner {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: conic-gradient(var(--action-color), transparent);
+  animation: rotate 1s linear infinite;
+}
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* =================================
+   רספונסיביות
+   ================================= */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .main-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  .main-nav a {
+      margin: 0;
+  }
+  .view {
+      padding: 1rem;
+  }
+  .gallery-grid {
+      grid-template-columns: 1fr;
+  }
+}
+</style> 

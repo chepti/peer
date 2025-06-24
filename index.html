@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>גלריית התוצרים</title>
+  <!-- הכללת קובץ העיצוב -->
+  <?!= include('styles'); ?>
+</head>
+<body>
+
+  <!-- ================= HEADER ================= -->
+  <header class="app-header">
+    <div class="logo">
+      <h1>גלריית התוצרים של ההשתלמות</h1>
+    </div>
+    <nav class="main-nav">
+      <a href="#gallery" class="nav-link active">גלריה</a>
+      <a href="#submit" class="nav-link">הגשת תוצר</a>
+      <a href="#reviews" class="nav-link">משימות ביקורת</a>
+    </nav>
+    <div class="user-profile-widget">
+      <!-- יתמלא באופן דינמי -->
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main id="app-container">
+    <!-- Loading Spinner -->
+    <div id="loader" class="loader-container">
+      <div class="spinner"></div>
+      <p>טוען נתונים...</p>
+    </div>
+
+    <!-- V-Gallery -->
+    <div id="gallery-view" class="view">
+        <h2>גלריית התוצרים</h2>
+        <p>פריטים שיעזרו לכם בהוראה ובלמידה</p>
+        <div class="filters">
+             <!-- יתמלא באופן דינמי -->
+        </div>
+        <div id="gallery-grid" class="gallery-grid">
+            <!-- כרטיסי התוצרים ירונדרו כאן -->
+        </div>
+    </div>
+
+    <!-- V-Submit Artifact -->
+    <div id="submit-view" class="view" style="display: none;">
+      <h2>הגשת תוצר חדש</h2>
+      <form id="submit-artifact-form">
+          <!-- שדות הטופס יתווספו כאן -->
+      </form>
+    </div>
+    
+    <!-- V-My Reviews -->
+    <div id="reviews-view" class="view" style="display: none;">
+        <h2>משימות הביקורת שלי</h2>
+        <div id="review-assignments">
+            <!-- מטלות לביקורת יוצגו כאן -->
+        </div>
+    </div>
+
+    <!-- V-Profile -->
+    <div id="profile-view" class="view" style="display: none;">
+        <h2>הפרופיל שלי</h2>
+        <div id="profile-details">
+            <!-- פרטי הפרופיל יוצגו כאן -->
+        </div>
+        <h3>ההגשות שלי</h3>
+        <div id="my-submissions">
+            <!-- התוצרים שהמשתמש הגיש יוצגו כאן -->
+        </div>
+    </div>
+
+    <!-- V-Admin -->
+    <div id="admin-view" class="view" style="display: none;">
+        <h2>לוח בקרה למנהל</h2>
+        <button id="export-csv-btn">ייצוא ל-CSV</button>
+        <div id="admin-data-container">
+            <!-- טבלאות נתונים למנהל יוצגו כאן -->
+        </div>
+    </div>
+    
+    <!-- V-Login Prompt -->
+    <div id="login-prompt-view" class="view" style="display: none;">
+        <h2>ברוכים הבאים!</h2>
+        <p>כדי להגיש תוצרים ולבצע ביקורת עמיתים, יש להתחבר עם חשבון גוגל.</p>
+        <button id="login-btn">התחברות עם גוגל</button>
+    </div>
+
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="app-footer">
+    <p>נבנה באהבה עבור קהילת המורים</p>
+  </footer>
+
+  <!-- הכללת קובץ הלוגיקה (JavaScript) -->
+  <?!= include('javascript'); ?>
+</body>
+</html> 
