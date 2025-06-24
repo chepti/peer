@@ -1,138 +1,402 @@
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+// ==================================================================
+//               STATE AND INITIALIZATION
+// ==================================================================
+let currentUser = null;
+let toastEl = null;
+let toast = null;
 
-  // =================================
-  //      Global State & Selectors
-  // =================================
-  let currentUser = null;
-  const views = document.querySelectorAll('.view');
-  const navLinks = document.querySelectorAll('.nav-link');
-  const loader = document.getElementById('loader');
-  const galleryGrid = document.getElementById('gallery-grid');
-  const userProfileWidget = document.querySelector('.user-profile-widget');
+document.addEventListener("DOMContentLoaded", function() {
+  // Initialize Bootstrap components
+  toastEl = document.getElementById('liveToast');
+  toast = new bootstrap.Toast(toastEl);
 
-  // =================================
-  //      UI Helper Functions
-  // =================================
+  // Check if a user session exists on the server
+  showLoader();
+  google.script.run
+    .withSuccessHandler(onSessionCheckSuccess)
+    .withFailureHandler(onFailure)
+    .checkUserSession();
 
-  const showLoader = () => loader.style.display = 'flex';
-  const hideLoader = () => loader.style.display = 'none';
-
-  /**
-   * Switches the visible view.
-   * @param {string} viewId The ID of the view to show (e.g., 'gallery-view').
-   */
-  const switchView = (viewId) => {
-    views.forEach(view => {
-      view.style.display = view.id === viewId ? 'block' : 'none';
-    });
-    // Update active nav link
-    navLinks.forEach(link => {
-      link.classList.toggle('active', link.getAttribute('href') === `#${viewId.replace('-view', '')}`);
-    });
-  };
+  const submissionForm = document.getElementById('submissionForm');
+  if(submissionForm) {
+    submissionForm.addEventListener('submit', handleSubmit);
+  }
   
-  // Simple hash-based router
-  const router = () => {
-    const hash = window.location.hash.slice(1) || 'gallery';
-    switchView(`${hash}-view`);
-  };
+  // Image paste/upload logic
+  const pasteArea = document.getElementById('paste-area-image');
+  const imageInput = document.getElementById('previewImageInput');
 
-
-  // =================================
-  //      Rendering Functions
-  // =================================
-
-  /**
-   * Renders the user login/profile widget in the header.
-   */
-  const renderUserWidget = () => {
-    if (currentUser) {
-      userProfileWidget.innerHTML = `
-        <div class="clay-box" style="padding: 5px 15px; text-align: left;">
-          <p style="font-weight: bold;">${currentUser.name || currentUser.email}</p>
-          <a href="#profile" style="font-size: 0.9em; color: var(--action-color);">הפרופיל שלי</a>
-        </div>
-      `;
-    } else {
-      userProfileWidget.innerHTML = `
-         <button id="login-btn" class="clay-button clay-button-primary">התחברות</button>
-      `;
-      // TODO: Add event listener for login button.
+  pasteArea.addEventListener('click', () => imageInput.click());
+  
+  imageInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelect(e.target.files[0]);
     }
-  };
+  });
 
-  /**
-   * Renders the gallery with artifact cards.
-   * @param {Array<object>} artifacts - Array of artifact data.
-   */
-  const renderGallery = (artifacts) => {
-    if (!artifacts || artifacts.length === 0) {
-      galleryGrid.innerHTML = '<p>עדיין אין תוצרים בגלריה. היו הראשונים להגיש!</p>';
-      return;
+  pasteArea.addEventListener('paste', (e) => {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (const item of items) {
+      if (item.type.indexOf('image') === 0) {
+        const blob = item.getAsFile();
+        handleFileSelect(blob);
+        break; 
+      }
     }
+  });
+  
+  // Drag and drop listeners
+  pasteArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    pasteArea.classList.add('dragover');
+  });
 
-    galleryGrid.innerHTML = artifacts.map(artifact => `
-      <div class="clay-card artifact-card">
-        <div class="card-image">
-          <img src="${artifact.previewUrl}" alt="${artifact.title}">
-        </div>
-        <div class="card-content">
-          <h3>${artifact.title}</h3>
-          <p>כלי: ${artifact.tool}</p>
-          <div class="tags">
-            ${artifact.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-          </div>
-        </div>
-      </div>
-    `).join('');
-  };
+  pasteArea.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    pasteArea.classList.remove('dragover');
+  });
 
-  // =================================
-  //      API Call Functions
-  // =================================
-
-  /**
-   * Fetches initial data when the app loads.
-   */
-  const initialize = () => {
-    showLoader();
-    google.script.run
-      .withSuccessHandler(user => {
-        currentUser = user;
-        renderUserWidget();
-        // Load gallery regardless of login status
-        google.script.run
-          .withSuccessHandler(artifacts => {
-            renderGallery(artifacts);
-            router(); // Call router after data is loaded
-            hideLoader();
-          })
-          .withFailureHandler(err => {
-            console.error('Error fetching gallery:', err);
-            hideLoader();
-            galleryGrid.innerHTML = '<p>שגיאה בטעינת הגלריה. נסו לרענן את הדף.</p>';
-          })
-          .getGalleryArtifacts(null);
-      })
-      .withFailureHandler(err => {
-        console.error('Error fetching user data:', err);
-        // Still try to load gallery for guests
-        initialize(); 
-      })
-      .getUserData();
-  };
-
-
-  // =================================
-  //      Event Listeners
-  // =================================
-
-  // Listen for hash changes to navigate
-  window.addEventListener('hashchange', router);
-
-  // Initial load
-  initialize();
-
+  pasteArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    pasteArea.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  });
 });
+
+function onSessionCheckSuccess(user) {
+  if (user) {
+    currentUser = user;
+    initializeApp(user);
+  } else {
+    showLoginScreen();
+  }
+  hideLoader();
+}
+
+// ==================================================================
+//                     VIEW MANAGEMENT
+// ==================================================================
+function showLoader() { document.getElementById('loader').classList.remove('d-none'); }
+function hideLoader() { document.getElementById('loader').classList.add('d-none'); }
+
+function showLoginScreen() {
+  document.getElementById('login-screen').classList.remove('d-none');
+  document.getElementById('register-screen').classList.add('d-none');
+  document.getElementById('app-content').classList.add('d-none');
+}
+
+function showRegisterScreen() {
+  document.getElementById('login-screen').classList.add('d-none');
+  document.getElementById('register-screen').classList.remove('d-none');
+  document.getElementById('app-content').classList.add('d-none');
+}
+
+function showAppContent() {
+  document.getElementById('login-screen').classList.add('d-none');
+  document.getElementById('register-screen').classList.add('d-none');
+  document.getElementById('app-content').classList.remove('d-none');
+  
+  // Show user controls
+  document.getElementById('guest-view').classList.add('d-none');
+  document.getElementById('user-view').classList.remove('d-none');
+}
+
+// ==================================================================
+//                 AUTHENTICATION HANDLING
+// ==================================================================
+function handleLogin() {
+  showLoader();
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+
+  if (!username || !password) {
+    showToast("נא למלא שם משתמש וסיסמה", "error");
+    hideLoader();
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(onLoginSuccess)
+    .withFailureHandler(onLoginFailure)
+    .loginUser(username, password);
+}
+
+function onLoginSuccess(user) {
+  if (user) {
+    currentUser = user;
+    initializeApp(user);
+  } else {
+    onLoginFailure({ message: "שם משתמש או סיסמה שגויים" });
+  }
+}
+
+function onLoginFailure(error) {
+  showToast(error.message || "אירעה שגיאה. נסה שוב.", "error");
+  hideLoader();
+}
+
+function handleRegister() {
+  showLoader();
+  const username = document.getElementById('register-username').value;
+  const password = document.getElementById('register-password').value;
+  const fullName = document.getElementById('register-fullname').value;
+  const question = document.getElementById('register-question').value;
+  const answer = document.getElementById('register-answer').value;
+
+  if (!username || !password || !fullName || !question || !answer) {
+    showToast("נא למלא את כל השדות.", "error");
+    hideLoader();
+    return;
+  }
+
+  const userDetails = { username, password, fullName, question, answer };
+  google.script.run
+    .withSuccessHandler(onRegisterSuccess)
+    .withFailureHandler(onFailure)
+    .registerUser(userDetails);
+}
+
+function onRegisterSuccess(result) {
+  if (result.success) {
+    showToast("ההרשמה עברה בהצלחה! מתחבר אוטומטית...");
+    // Automatically log in the user
+    handleLogin();
+  } else {
+    showToast(result.message, "error");
+    hideLoader();
+  }
+}
+
+function logout() {
+  showLoader();
+  google.script.run
+    .withSuccessHandler(() => {
+        currentUser = null;
+        document.getElementById('guest-view').classList.remove('d-none');
+        document.getElementById('user-view').classList.add('d-none');
+        showLoginScreen();
+        hideLoader();
+    })
+    .logoutUser();
+}
+
+// ==================================================================
+//                     APPLICATION LOGIC
+// ==================================================================
+function initializeApp(user) {
+  document.getElementById('welcome-message').innerText = `ברוך הבא, ${user.fullName}`;
+  showAppContent();
+  loadInitialData();
+}
+
+function loadInitialData() {
+  showLoader();
+  google.script.run
+    .withSuccessHandler(onDataLoaded)
+    .withFailureHandler(onFailure)
+    .getInitialAppData();
+}
+
+function onDataLoaded(data) {
+  console.log("Data loaded:", data);
+  renderGallery(data.gallery);
+  renderMySubmissions(data.mySubmissions);
+  renderMyReviews(data.myReviews);
+  hideLoader();
+}
+
+function onFailure(error) {
+  console.error('An error occurred:', error);
+  showToast('אירעה שגיאה: ' + error.message, "error");
+  hideLoader();
+}
+
+// ==================================================================
+//                       RENDERING
+// ==================================================================
+function renderGallery(artifacts) {
+  const galleryContent = document.getElementById('gallery-content');
+  galleryContent.innerHTML = '';
+  if (!artifacts || artifacts.length === 0) {
+    galleryContent.innerHTML = '<p>אין תוצרים להצגה כרגע.</p>';
+    return;
+  }
+  artifacts.forEach(artifact => {
+    const card = createArtifactCard(artifact);
+    galleryContent.appendChild(card);
+  });
+}
+
+function renderMySubmissions(submissions) {
+    const content = document.getElementById('my-submissions-content');
+    content.innerHTML = '';
+     if (!submissions || submissions.length === 0) {
+        content.innerHTML = '<p>עדיין לא הגשת תוצרים.</p>';
+        return;
+    }
+    submissions.forEach(sub => {
+        const card = createArtifactCard(sub, true); // true = owned by user
+        content.appendChild(card);
+    });
+}
+
+function renderMyReviews(reviews) {
+    const content = document.getElementById('my-reviews-content');
+    content.innerHTML = '';
+    if (!reviews || reviews.length === 0) {
+        content.innerHTML = '<p>אין לך משימות ביקורת כרגע.</p>';
+        return;
+    }
+    reviews.forEach(review => {
+        // Here you would render the review assignments
+        const el = document.createElement('div');
+        el.className = 'col-12 mb-3';
+        el.innerHTML = `
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">ביקורת נדרשת עבור: ${review.title}</h5>
+              <p class="card-text">סטטוס: ${review.status}</p>
+              <button class="btn btn-primary" onclick="startReview('${review.id}')">התחל ביקורת</button>
+            </div>
+          </div>
+        `;
+        content.appendChild(el);
+    });
+}
+
+function createArtifactCard(artifact, isOwner = false) {
+    const col = document.createElement('div');
+    col.className = 'col-md-4 mb-4';
+
+    // The author name is now passed as `authorFullName` from the backend
+    const authorName = artifact.authorFullName || 'לא ידוע';
+
+    col.innerHTML = `
+        <div class="card h-100">
+            <img src="${artifact.previewImageUrl}" class="card-img-top" alt="תצוגה מקדימה של ${artifact.title}">
+            <div class="card-body">
+                <h5 class="card-title">${artifact.title}</h5>
+                <p class="card-text"><small class="text-muted">מאת: ${authorName}</small></p>
+                <p class="card-text">${artifact.instructions.substring(0, 100)}...</p>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-sm btn-outline-primary" onclick="showArtifactDetails('${artifact.id}')">פרטים נוספים</button>
+            </div>
+        </div>
+    `;
+    return col;
+}
+
+
+// ==================================================================
+//               MODALS AND FORMS HANDLING
+// ==================================================================
+let previewFile = null;
+
+function handleFileSelect(file) {
+    if (!file.type.startsWith('image/')) {
+        showToast('יש לבחור קובץ תמונה בלבד.', 'error');
+        return;
+    }
+    previewFile = file;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const previewImg = document.getElementById('image-preview');
+        previewImg.src = e.target.result;
+        previewImg.style.display = 'block';
+        document.getElementById('paste-area-text').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+function handleSubmit(event) {
+    event.preventDefault();
+    if (!previewFile) {
+        showToast('יש להוסיף תמונה מייצגת.', 'error');
+        return;
+    }
+    showLoader();
+
+    const fileReader = new FileReader();
+    fileReader.onload = (e) => {
+        const fileData = {
+            base64: e.target.result.split(',')[1],
+            type: previewFile.type,
+            name: previewFile.name
+        };
+
+        const formData = {
+            title: document.getElementById('title').value,
+            toolUsed: document.getElementById('toolUsed').value,
+            instructions: document.getElementById('instructions').value,
+            targetAudience: document.getElementById('targetAudience').value,
+            tags: document.getElementById('tags').value,
+            artifactType: document.getElementById('artifactType').value,
+            artifactLink: document.getElementById('artifactLink').value
+        };
+        
+        google.script.run
+            .withSuccessHandler(onSubmitSuccess)
+            .withFailureHandler(onFailure)
+            .submitArtifact(formData, fileData);
+    };
+    fileReader.readAsDataURL(previewFile);
+}
+
+function onSubmitSuccess(result) {
+    hideLoader();
+    if (result.success) {
+        const submissionModalEl = document.getElementById('submissionModal');
+        const submissionModal = bootstrap.Modal.getInstance(submissionModalEl);
+        submissionModal.hide();
+        
+        showToast(result.message || "ההגשה נשמרה בהצלחה!");
+        loadInitialData(); // Refresh all app data
+        
+        // Reset form for next time
+        document.getElementById('submissionForm').reset();
+        previewFile = null;
+        const previewImg = document.getElementById('image-preview');
+        previewImg.src = "";
+        previewImg.style.display = 'none';
+        document.getElementById('paste-area-text').style.display = 'block';
+
+    } else {
+        onFailure({ message: result.message });
+    }
+}
+
+// Placeholder for other functions that will need to be implemented/updated
+function showArtifactDetails(id) {
+    // Needs implementation
+    console.log("Show details for", id);
+}
+
+function startReview(id) {
+    // Needs implementation
+    console.log("Start review for", id);
+}
+
+
+// ==================================================================
+//                     UTILITIES
+// ==================================================================
+function showToast(message, type = "success") {
+  const toastBody = document.getElementById('toast-body');
+  toastBody.textContent = message;
+  toastEl.classList.remove('bg-success', 'bg-danger', 'text-white'); // Reset classes
+  if (type === "error") {
+    toastEl.classList.add('bg-danger', 'text-white');
+  } else {
+    toastEl.classList.add('bg-success', 'text-white');
+  }
+  toast.show();
+}
+
 </script> 

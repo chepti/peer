@@ -1,222 +1,251 @@
 // =================================================================
-//      הגדרות הפרויקט - יש לעדכן את הערכים בהתאם לסביבה שלך
+//      GLOBAL CONFIGURATION
 // =================================================================
+const SPREADSHEET_ID = '164XaMFX9EVAmNQPG6ecxVbx4XxUUOvurYdUBhjYoK0k';
+const UPLOAD_FOLDER_ID = '1_JwHrGcL3Via1OnOseSC4KHhnRzbRvPj';
+const ADMIN_USERNAMES = ['admin', 'chepti']; // Use usernames for admin rights
 
-// יש להחליף את הכתובת הזו במזהה של קובץ ה-Google Sheets שלך
-// ניתן למצוא את המזהה בכתובת ה-URL של הקובץ, למשל:
-// https://docs.google.com/spreadsheets/d/THIS_IS_THE_ID/edit
-const SPREADSHEET_ID = '1a2b3c4d5e6f7g8h9i0j-k_l_m_n_o_p_q_r_s_t_u_v_w_x_y'; 
+// Sheet Names
+const SHEETS = {
+  USERS: 'Users',
+  ARTIFACTS: 'Artifacts',
+  REVIEWS: 'Reviews',
+  ASSIGNMENTS: 'Assignments'
+};
 
-// יש להחליף את הכתובת הזו במזהה של תיקיית ה-Google Drive אליה יועלו הקבצים
-// ניתן למצוא את המזהה בכתובת ה-URL של התיקייה, למשל:
-// https://drive.google.com/drive/folders/THIS_IS_THE_ID
-const UPLOAD_FOLDER_ID = '1a2b3c4d5e6f7g8h9i0j-k_l_m_n_o_p_q_r_s';
-
-// רשימת כתובות אימייל של מנהלי המערכת
-const ADMIN_EMAILS = ['admin1@example.com', 'chepti@gmail.com'];
+// Column Names - MUST MATCH THE HEADERS IN THE GOOGLE SHEET EXACTLY
+const COLS = {
+  ARTIFACTS: {
+    SUBMITTER_USERNAME: 'submitterUsername',
+    AUTHOR_FULL_NAME: 'authorFullName' // This is a virtual column, added dynamically
+  }
+};
 
 
 // =================================================================
-//                         טיפול בבקשות WEB
+//      WEB APP ENTRY POINTS
 // =================================================================
-
-/**
- * פונקציה ראשית המופעלת בעת גישה לכתובת ה-URL של האפליקציה.
- * מגישה את דף ה-HTML הראשי למשתמש.
- * @param {object} e - אובייקט האירוע של הבקשה.
- * @returns {HtmlOutput} - אובייקט HTML שיוצג בדפדפן.
- */
 function doGet(e) {
   const htmlOutput = HtmlService.createTemplateFromFile('index').evaluate();
-  htmlOutput.setTitle('גלריית התוצרים השיתופית');
+  htmlOutput.setTitle('פלטפורמת ביקורת עמיתים');
   htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
   return htmlOutput;
 }
 
-/**
- * פונקציה המאפשרת לכלול קבצי HTML אחרים (כמו CSS או JS) בתוך קובץ ה-HTML הראשי.
- * @param {string} filename - שם הקובץ שיש לכלול.
- * @returns {string} - התוכן של הקובץ.
- */
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 
 // =================================================================
-//                      פונקציות ממשק (API)
-//           הפונקציות האלו נקראות מהצד לקוח (JavaScript)
+//      AUTHENTICATION & SESSION MANAGEMENT
 // =================================================================
-
-/**
- * מחזיר את נתוני המשתמש המחובר, או null אם המשתמש אינו מחובר.
- * בודק אם המשתמש הוא מנהל מערכת.
- * @returns {object|null} אובייקט עם פרטי המשתמש או null.
- */
-function getUserData() {
-  try {
-    const email = Session.getActiveUser().getEmail();
-    if (!email) {
-      return null;
-    }
-    const isAdmin = ADMIN_EMAILS.includes(email);
-    // TODO: להוסיף לוגיקה לקריאת נתונים נוספים מה-Sheet
-    return {
-      email: email,
-      isAdmin: isAdmin,
-      name: 'משתמש לדוגמה', // TODO: לשלוף שם אמיתי
-      submissionsCount: 2,  // TODO: לספור הגשות
-      reviewsCount: 1       // TODO: לספור ביקורות
-    };
-  } catch (e) {
-    // אם המשתמש לא מחובר, Session.getActiveUser() יזרוק שגיאה
+function checkUserSession() {
+  const username = PropertiesService.getUserProperties().getProperty('username');
+  if (!username) {
     return null;
   }
-}
+  const allUsers = getAllUsers();
+  const userData = allUsers.find(u => u.username === username);
 
-/**
- * מחזיר את רשימת כל התוצרים הגלויים לגלריה.
- * @param {object} filters - אובייקט עם פילטרים (כרגע לא בשימוש).
- * @returns {Array} מערך של אובייקטי תוצרים.
- */
-function getGalleryArtifacts(filters) {
-    // TODO: לוגיקה אמיתית לקריאת נתונים מה-Google Sheet
-    // כרגע מחזיר נתונים סטטיים לדוגמה
-    return [
-        {id: 1, owner: 'a@a.com', title: 'מצגת מערכת השמש', previewUrl: 'https://via.placeholder.com/400x300.png/ADD8E6/000000?Text=PDF', type: 'pdf', tags: ['מדעים', 'כיתה ד-ו'], tool: 'PowerPoint'},
-        {id: 2, owner: 'b@b.com', title: 'כרטיסיות אותיות', previewUrl: 'https://via.placeholder.com/400x300.png/90EE90/000000?Text=Canva', type: 'canva', tags: ['שפה', 'כיתה א'], tool: 'Canva'},
-        {id: 3, owner: 'c@c.com', title: 'לוח זמנים צבעוני', previewUrl: 'https://via.placeholder.com/400x300.png/FFB6C1/000000?Text=Image', type: 'image', tags: ['ארגון', 'כללי'], tool: 'Photoshop'},
-        {id: 4, owner: 'd@d.com', title: 'ג׳פרדי: ספרות לתיכון', previewUrl: 'https://via.placeholder.com/400x300.png/D8BFD8/000000?Text=HTML', type: 'html', tags: ['ספרות', 'בגרות'], tool: 'Genially'},
-    ];
-}
-
-/**
- * מטפל בהגשת תוצר חדש.
- * מעלה את הקובץ (אם קיים) ל-Google Drive ורושם את הנתונים ב-Google Sheet.
- * @param {object} formData - אובייקט המכיל את נתוני הטופס.
- * @param {string} fileData - אם הועלה קובץ, זהו ייצוג base64 של הקובץ.
- * @returns {object} אובייקט המציין הצלחה או כישלון.
- */
-function submitArtifact(formData, fileData) {
-    const user = getUserData();
-    if (!user) {
-        throw new Error('משתמש לא מחובר. יש להתחבר כדי להגיש תוצר.');
-    }
-
-    // TODO: לוגיקת העלאת קובץ ל-Drive אם fileData קיים
-    // TODO: לוגיקת שמירת הנתונים בגיליון ה-Artifacts
-    
-    console.log('התקבל תוצר חדש:', formData.title, 'מאת', user.email);
-
-    // לאחר ההגשה, נבדוק אם צריך להקצות לו ביקורות חדשות
-    assignReviewsIfNeeded(user.email);
-
-    return { success: true, message: 'התוצר הוגש בהצלחה!' };
-}
-
-/**
- * מחזיר את המטלות לביקורת שהוקצו למשתמש הנוכחי.
- * @returns {Array} מערך של אובייקטי תוצרים לביקורת.
- */
-function getReviewAssignments() {
-    const user = getUserData();
-    if (!user) return [];
-
-    // TODO: לוגיקה אמיתית לקריאת הקצאות מה-Sheet
-    return [
-         {id: 5, title: 'משימה שהוקצתה לי 1', type: 'pdf'},
-         {id: 6, title: 'משימה שהוקצתה לי 2', type: 'image'},
-    ];
-}
-
-
-/**
- * שומר ביקורת חדשה שהוגשה על ידי משתמש.
- * @param {object} reviewData - נתוני הביקורת (ID של התוצר, ציונים והערות).
- * @returns {object} אובייקט המציין הצלחה או כישלון.
- */
-function submitReview(reviewData) {
-    const user = getUserData();
-    if (!user) throw new Error('משתמש לא מחובר.');
-
-    // TODO: לוגיקת שמירת הביקורת בגיליון ה-Reviews
-    // TODO: עדכון סטטוס המטלה בגיליון ה-Assignments
-
-    console.log('התקבלה ביקורת:', reviewData, 'מאת', user.email);
-    return { success: true, message: 'הביקורת נשמרה בהצלחה!' };
-}
-
-
-// =================================================================
-//                      לוגיקת ליבה ומנהלה
-// =================================================================
-
-/**
- * בודק אם למשתמש יש מספיק הגשות ופחות מ-3 מטלות ביקורת פתוחות,
- * ואם כן, מקצה לו מטלות חדשות.
- * @param {string} userEmail - כתובת המייל של המשתמש.
- */
-function assignReviewsIfNeeded(userEmail) {
-    // TODO:
-    // 1. לספור כמה תוצרים המשתמש הגיש.
-    // 2. לספור כמה מטלות ביקורת פתוחות יש לו.
-    // 3. אם הגיש לפחות 1 (או לפי חוקיות אחרת) ויש לו פחות מ-3 מטלות, להפעיל assignNewReviews.
-    console.log(`בדיקת צורך בהקצאת ביקורות עבור ${userEmail}`);
-}
-
-/**
- * מקצה עד 3 ביקורות חדשות ורנדומליות למשתמש.
- * דואג שהמשתמש לא יקבל את התוצרים של עצמו או תוצרים שכבר ביקר.
- * @param {string} userEmail - כתובת המייל של המשתמש.
- */
-function assignNewReviews(userEmail) {
-    // TODO:
-    // 1. לקחת את כל רשימת התוצרים מה-Sheet.
-    // 2. לסנן החוצה את התוצרים של המשתמש עצמו.
-    // 3. לסנן החוצה תוצרים שהמשתמש כבר קיבל כמטלה.
-    // 4. לבחור 3 بشكل אקראי מהרשימה שנותרה.
-    // 5. לרשום את ההקצאות החדשות בגיליון ה-Assignments.
-    console.log(`הקצאת ביקורות חדשות עבור ${userEmail}`);
-}
-
-// =================================================================
-//                        פונקציות למנהל
-// =================================================================
-
-/**
- * מחזיר את כל הנתונים מכל הגיליונות עבור תצוגת המנהל.
- * פונקציה זו צריכה להיות מאובטחת ולוודא שהקורא הוא מנהל.
- * @returns {object} אובייקט המכיל מערכים של משתמשים, תוצרים וביקורות.
- */
-function getAdminDashboardData() {
-    const user = getUserData();
-    if (!user || !user.isAdmin) {
-        throw new Error('אין הרשאות גישה.');
-    }
-
-    // TODO: לוגיקה אמיתית לקריאת כל הנתונים מהגיליונות
+  if (userData) {
     return {
-        users: [{email: 'a@a.com', submissions: 5, reviews: 3}],
-        artifacts: getGalleryArtifacts(), // שימוש חוזר בפונקציה של הגלריה לדוגמה
-        reviews: [{reviewer: 'a@a.com', artifactId: 2, score: 4.5, comment: 'עבודה יפה'}]
+      username: userData.username,
+      fullName: userData.fullName,
+      isAdmin: ADMIN_USERNAMES.includes(userData.username.toLowerCase())
     };
+  }
+  return null;
 }
 
-/**
- * מייצא את כל נתוני המערכת לקובץ CSV.
- * מאובטח למנהלים בלבד.
- * @returns {string} מחרוזת המכילה את כל המידע בפורמט CSV.
- */
-function exportDataAsCsv() {
-    const user = getUserData();
-    if (!user || !user.isAdmin) {
-        throw new Error('אין הרשאות גישה.');
-    }
+function registerUser(userDetails) {
+  const { usersSheet } = getSheets();
+  const allUsers = getAllUsers();
 
-    // TODO:
-    // 1. לקרוא את כל הנתונים מהגיליונות.
-    // 2. להמיר כל גיליון למחרוזת CSV.
-    // 3. לשרשר את כל המחרוזות יחד עם כותרות מתאימות.
+  if (!userDetails.username || !userDetails.password || !userDetails.fullName) {
+    throw new Error('יש למלא את כל השדות.');
+  }
+  
+  const existingUser = allUsers.find(u => u.username.toLowerCase() === userDetails.username.toLowerCase());
+  if (existingUser) {
+    throw new Error('שם המשתמש תפוס.');
+  }
+
+  const newUserRow = [
+    userDetails.username,
+    userDetails.fullName,
+    userDetails.password,
+    userDetails.question,
+    userDetails.answer
+  ];
+  
+  usersSheet.appendRow(newUserRow);
+  SpreadsheetApp.flush();
+
+  return { success: true, message: 'ההרשמה בוצעה בהצלחה!' };
+}
+
+function loginUser(username, password) {
+  const allUsers = getAllUsers();
+  const user = allUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+
+  if (!user) {
+    throw new Error('שם משתמש או סיסמה שגויים.');
+  }
+
+  if (user.password !== password) {
+    throw new Error('שם משתמש או סיסמה שגויים.');
+  }
+  
+  PropertiesService.getUserProperties().setProperty('username', user.username);
+
+  return {
+    username: user.username,
+    fullName: user.fullName,
+    isAdmin: ADMIN_USERNAMES.includes(user.username.toLowerCase())
+  };
+}
+
+function logoutUser() {
+  PropertiesService.getUserProperties().deleteProperty('username');
+  return { success: true };
+}
+
+
+// =================================================================
+//      PRIMARY API FUNCTIONS (Called from client)
+// =================================================================
+function getInitialAppData() {
+  const user = checkUserSession();
+  if (!user) {
+    return { user: null, gallery: [], mySubmissions: [], myReviews: [] };
+  }
+
+  const allUsers = getAllUsers();
+  const allArtifacts = getAllArtifacts();
+  
+  const userMap = new Map(allUsers.map(u => [u.username, u.fullName]));
+
+  const gallery = allArtifacts
+    .filter(art => art.isPublished == true || String(art.isPublished).toLowerCase() === 'true')
+    .map(art => ({
+      ...art,
+      [COLS.ARTIFACTS.AUTHOR_FULL_NAME]: userMap.get(art[COLS.ARTIFACTS.SUBMITTER_USERNAME]) || 'אלמוני'
+    }));
+
+  const mySubmissions = allArtifacts
+    .filter(art => art[COLS.ARTIFACTS.SUBMITTER_USERNAME] === user.username)
+     .map(art => ({
+      ...art,
+      [COLS.ARTIFACTS.AUTHOR_FULL_NAME]: user.fullName
+    }));
     
-    return 'header1,header2\nvalue1,value2';
+  const myReviews = getReviewAssignmentsForUser(user.username);
+
+  return {
+    user: user,
+    gallery: gallery,
+    mySubmissions: mySubmissions,
+    myReviews: myReviews
+  };
+}
+
+function submitArtifact(formData, previewImageData) {
+  const user = checkUserSession();
+  if (!user) {
+    throw new Error('אינך מחובר. יש לרענן את הדף ולהתחבר.');
+  }
+
+  const { artifactsSheet } = getSheets();
+  
+  let previewUrl = '';
+  if (previewImageData && previewImageData.base64) {
+    try {
+      const folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+      const blob = Utilities.newBlob(Utilities.base64Decode(previewImageData.base64), previewImageData.type, previewImageData.name);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      previewUrl = file.getUrl();
+    } catch (e) {
+      Logger.log('Error uploading file to Drive: ' + e.message);
+      throw new Error('שגיאה בהעלאת התמונה.');
+    }
+  } else {
+    throw new Error('נדרשת תמונה מייצגת.');
+  }
+
+  const headers = artifactsSheet.getRange(1, 1, 1, artifactsSheet.getLastColumn()).getValues()[0];
+  const lastId = artifactsSheet.getLastRow() > 1 ? artifactsSheet.getRange(artifactsSheet.getLastRow(), 1).getValue() : 0;
+  const newId = (typeof lastId === 'number' ? lastId : 0) + 1;
+
+  const newRowObject = {
+    'id': newId,
+    'timestamp': new Date(),
+    'submitterUsername': user.username,
+    'title': formData.title,
+    'instructions': formData.instructions,
+    'targetAudience': formData.targetAudience,
+    'tags': formData.tags,
+    'toolUsed': formData.toolUsed,
+    'artifactType': formData.artifactType,
+    'fileUrl': formData.artifactLink || '',
+    'previewImageUrl': previewUrl,
+    'isPublished': true,
+    'likes': 0
+  };
+  
+  const newRow = headers.map(header => newRowObject[header.trim()] !== undefined ? newRowObject[header.trim()] : '');
+
+  artifactsSheet.appendRow(newRow);
+  SpreadsheetApp.flush();
+
+  return { success: true, message: 'התוצר הוגש בהצלחה!' };
+}
+
+// =================================================================
+//      DATA RETRIEVAL & UTILITY FUNCTIONS
+// =================================================================
+function getReviewAssignmentsForUser(username) {
+  // Placeholder for future implementation
+  return [];
+}
+
+function getAllUsers() {
+  const { usersSheet } = getSheets();
+  if (usersSheet.getLastRow() < 2) return [];
+  const range = usersSheet.getRange(2, 1, usersSheet.getLastRow() - 1, usersSheet.getLastColumn());
+  return sheetRangeToObjects(range, usersSheet.getRange(1, 1, 1, usersSheet.getLastColumn()).getValues()[0]);
+}
+
+function getAllArtifacts() {
+    const { artifactsSheet } = getSheets();
+    if (artifactsSheet.getLastRow() < 2) return [];
+    const range = artifactsSheet.getRange(2, 1, artifactsSheet.getLastRow() - 1, artifactsSheet.getLastColumn());
+    return sheetRangeToObjects(range, artifactsSheet.getRange(1, 1, 1, artifactsSheet.getLastColumn()).getValues()[0]);
+}
+
+function getSheets() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  return {
+    ss: ss,
+    usersSheet: ss.getSheetByName(SHEETS.USERS),
+    artifactsSheet: ss.getSheetByName(SHEETS.ARTIFACTS),
+    reviewsSheet: ss.getSheetByName(SHEETS.REVIEWS),
+    assignmentsSheet: ss.getSheetByName(SHEETS.ASSIGNMENTS)
+  };
+}
+
+function sheetRangeToObjects(range, headers) {
+  const values = range.getValues();
+  const trimmedHeaders = headers.map(h => String(h).trim());
+  
+  return values.map((row) => {
+    const obj = {};
+    trimmedHeaders.forEach((header, i) => {
+      if (header) {
+        obj[header] = row[i];
+      }
+    });
+    return obj;
+  });
 } 
