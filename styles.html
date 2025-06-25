@@ -8,15 +8,15 @@
 
 body {
     font-family: 'Heebo', sans-serif;
-    background-color: #f8f9fa; /* Very light gray background */
-    color: #212529; /* Darker text for better contrast */
+    background-color: #EAEAEA; /* Muted gray background for claymorphism */
+    color: #333;
     direction: rtl;
     margin: 0;
 }
 
 /*
   =================================
-  General Layout & Loader
+  General Layout
   =================================
 */
 .container-fluid {
@@ -25,45 +25,31 @@ body {
     min-height: 100vh;
 }
 
-#loader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-
-#loader .spinner-border {
-    width: 3rem;
-    height: 3rem;
-}
-
 /*
   =================================
-  Authentication Screens (Login/Register)
+  Claymorphism Elements
   =================================
 */
-.auth-screen {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
+
+/* Header */
+header {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
+/* Auth Forms */
 .auth-form {
     width: 100%;
-    max-width: 400px;
-    padding: 2.5rem;
-    background-color: #ffffff;
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    max-width: 420px;
+    padding: 3rem;
     text-align: center;
+    background: #EAEAEA;
+    border-radius: 2rem;
+    box-shadow: 
+        9px 9px 18px rgba(0, 0, 0, 0.2),
+        inset -4px -4px 12px rgba(0, 0, 0, 0.1),
+        inset 6px 6px 15px rgba(255, 255, 255, 0.9);
 }
 
 .auth-form h2 {
@@ -71,19 +57,105 @@ body {
     font-weight: 700;
 }
 
-.auth-form .form-control {
-    margin-bottom: 1rem;
-    padding: 0.75rem 1rem;
-    height: auto;
+/* Cards (for Gallery & Submissions) */
+.card {
+    border: none !important;
+    background: #EAEAEA;
+    border-radius: 1.5rem;
+    box-shadow: 
+        8px 8px 16px rgba(0, 0, 0, 0.22),
+        inset -3px -3px 10px rgba(0, 0, 0, 0.1),
+        inset 5px 5px 12px rgba(255, 255, 255, 0.9);
+    transition: all 0.2s ease-in-out;
+}
+.card:hover {
+    transform: translateY(-5px);
+}
+.card-img-top {
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    height: 200px;
+    object-fit: cover;
+    background-color: #d1d1d1;
+}
+.card-footer {
+    background-color: transparent !important;
+    border-top: 1px solid rgba(0,0,0,0.1) !important;
 }
 
-.auth-form .btn {
-    padding: 0.75rem 1rem;
-    font-weight: 500;
+
+/* Modals */
+.modal-content {
+    border: none;
+    background: #EAEAEA;
+    border-radius: 2rem;
+    box-shadow: 
+        9px 9px 18px rgba(0, 0, 0, 0.2),
+        inset -4px -4px 12px rgba(0, 0, 0, 0.1),
+        inset 6px 6px 15px rgba(255, 255, 255, 0.9);
 }
 
-.auth-form a {
-    text-decoration: none;
+/*
+  =================================
+  Loader
+  =================================
+*/
+#loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(234, 234, 234, 0.85);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: conic-gradient(#0000 10%,#0d6efd);
+  -webkit-mask: radial-gradient(farthest-side,#0000 calc(100% - 9px),#000 0);
+  animation: spinner-spin 0.8s infinite linear;
+}
+
+@keyframes spinner-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/*
+  =================================
+  Misc Components
+  =================================
+*/
+.paste-area {
+  border: 2.5px dashed #0d6efd;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: #555;
+  background-color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.paste-area:hover, .paste-area.dragover {
+  background-color: rgba(210, 230, 255, 0.6);
+  border-color: #0b5ed7;
+}
+
+#image-preview {
+  max-width: 100%;
+  max-height: 200px;
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 
 /*
@@ -102,76 +174,20 @@ header.shadow-sm {
 
 /* Tabs */
 .nav-tabs {
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
     margin-bottom: 1.5rem;
 }
 
 .nav-tabs .nav-link {
     font-weight: 500;
-    color: #6c757d; /* Gray for inactive tabs */
+    color: #555;
+    border: none;
+    background-color: transparent;
 }
 
 .nav-tabs .nav-link.active {
-    color: #0d6efd; /* Bootstrap primary blue for active tab */
-    border-color: #dee2e6 #dee2e6 #fff;
-}
-
-/*
-  =================================
-  Cards (for Gallery & Submissions)
-  =================================
-*/
-.card {
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    transition: all 0.2s ease-in-out;
-}
-
-.card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.card-img-top {
-    height: 180px;
-    object-fit: cover;
-    background-color: #e9ecef;
-}
-
-.card-footer {
-    background-color: #ffffff;
-    border-top: 1px solid #dee2e6;
-}
-
-/*
-  =================================
-  Modals (Submission & Review)
-  =================================
-*/
-.modal-content {
-    border-radius: 0.75rem;
-}
-
-.paste-area {
-  border: 2px dashed #0d6efd;
-  border-radius: 10px;
-  padding: 20px;
-  text-align: center;
-  color: #6c757d;
-  background-color: #f8f9fa;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.paste-area:hover {
-  background-color: #e9ecef;
-}
-
-#image-preview {
-  max-width: 100%;
-  max-height: 200px;
-  margin-top: 15px;
-  border-radius: 5px;
-  border: 1px solid #dee2e6;
+    color: #0d6efd;
+    background-color: rgba(255,255,255,0.6);
+    border-radius: 0.5rem 0.5rem 0 0;
 }
 </style> 

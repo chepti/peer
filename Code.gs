@@ -180,7 +180,7 @@ function submitArtifact(formData, previewImageData) {
 
   const newRowObject = {
     'id': newId,
-    'timestamp': new Date(),
+    'submissionTimestamp': new Date(),
     'submitterUsername': user.username,
     'title': formData.title,
     'instructions': formData.instructions,
@@ -188,7 +188,7 @@ function submitArtifact(formData, previewImageData) {
     'tags': formData.tags,
     'toolUsed': formData.toolUsed,
     'artifactType': formData.artifactType,
-    'fileUrl': formData.artifactLink || '',
+    'artifactLink': formData.artifactLink || '',
     'previewImageUrl': previewUrl,
     'isPublished': true,
     'likes': 0
@@ -212,6 +212,10 @@ function getReviewAssignmentsForUser(username) {
 
 function getAllUsers() {
   const { usersSheet } = getSheets();
+  if (!usersSheet) {
+    Logger.log('Error: Sheet with name "' + SHEETS.USERS + '" not found.');
+    return []; // Return empty array to prevent crash
+  }
   if (usersSheet.getLastRow() < 2) return [];
   const range = usersSheet.getRange(2, 1, usersSheet.getLastRow() - 1, usersSheet.getLastColumn());
   return sheetRangeToObjects(range, usersSheet.getRange(1, 1, 1, usersSheet.getLastColumn()).getValues()[0]);
@@ -219,6 +223,10 @@ function getAllUsers() {
 
 function getAllArtifacts() {
     const { artifactsSheet } = getSheets();
+    if (!artifactsSheet) {
+      Logger.log('Error: Sheet with name "' + SHEETS.ARTIFACTS + '" not found.');
+      return []; // Return empty array to prevent crash
+    }
     if (artifactsSheet.getLastRow() < 2) return [];
     const range = artifactsSheet.getRange(2, 1, artifactsSheet.getLastRow() - 1, artifactsSheet.getLastColumn());
     return sheetRangeToObjects(range, artifactsSheet.getRange(1, 1, 1, artifactsSheet.getLastColumn()).getValues()[0]);
@@ -248,4 +256,4 @@ function sheetRangeToObjects(range, headers) {
     });
     return obj;
   });
-} 
+}
