@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+  <base target="_top">
+  <meta charset="UTF-M-^8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>פלטפורמת ביקורת עמיתים</title>
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div id="app">
+    <!-- Main Header -->
+    <header class="main-header">
+      <h1>גלריית תוצרים</h1>
+      <div id="user-actions">
+        <button id="login-btn">התחברות</button>
+      </div>
+    </header>
+
+    <!-- Gallery View -->
+    <main id="gallery-view">
+      <div class="filter-container">
+        <!-- Tag filters will be dynamically inserted here -->
+      </div>
+      <div id="artifacts-grid" class="artifacts-grid">
+        <!-- Artifact cards will be dynamically inserted here -->
+      </div>
+    </main>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-container" style="display:none;">
+      <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>התחברות</h2>
+        <form id="login-form">
+          <input type="text" id="login-username" placeholder="שם משתמש" required>
+          <input type="password" id="login-password" placeholder="סיסמה" required>
+          <button type="submit">התחבר</button>
+        </form>
+        <p>אין לך חשבון? <a href="#" id="show-register">הירשם כאן</a></p>
+      </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="register-modal" class="modal-container" style="display:none;">
+      <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>הרשמה</h2>
+        <form id="register-form">
+            <input type="email" id="register-email" placeholder="אימייל" required>
+            <input type="text" id="register-fullname" placeholder="שם מלא" required>
+            <input type="password" id="register-password" placeholder="סיסמה" required>
+            <select id="register-security-question" required>
+                <option value="" disabled selected>בחר שאלת אבטחה</option>
+                <option value="q1">מהו שם חיית המחמד הראשונה שלך?</option>
+                <option value="q2">מהי עיר הולדתך?</option>
+                <option value="q3">מהו שם הנעורים של אמך?</option>
+            </select>
+            <input type="text" id="register-security-answer" placeholder="תשובתך לשאלת האבטחה" required>
+            <button type="submit">הירשם</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- User Profile View -->
+    <div id="profile-view" style="display:none;">
+        <!-- Profile content will be dynamically inserted here -->
+    </div>
+    
+    <!-- Artifact Submission Form -->
+    <div id="submission-form-view" style="display:none;">
+        <!-- Submission form will be here -->
+    </div>
+
+  </div>
+  <?!= include('JavaScript'); ?>
+</body>
+</html> 

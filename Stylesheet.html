@@ -1,0 +1,138 @@
+<style>
+  :root {
+    --bg-color: #f0f4f8;
+    --primary-color: #d6dffC;
+    --secondary-color: #b7c6e5;
+    --accent-color: #a2b2d8;
+    --text-color: #333;
+    --border-radius: 16px;
+    --shadow-distance: 6px;
+    --shadow-blur: 12px;
+  }
+
+  body {
+    direction: rtl;
+    font-family: 'Heebo', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  /* Claymorphism styles */
+  .clay-element {
+    border-radius: var(--border-radius);
+    background: var(--primary-color);
+    box-shadow: 
+      var(--shadow-distance) var(--shadow-distance) var(--shadow-blur) #a8b2c8, 
+      calc(var(--shadow-distance) * -1) calc(var(--shadow-distance) * -1) var(--shadow-blur) #ffffff;
+    transition: all 0.3s ease;
+  }
+  
+  .clay-element-inset {
+    border-radius: var(--border-radius);
+    background: var(--primary-color);
+    box-shadow: 
+      inset var(--shadow-distance) var(--shadow-distance) var(--shadow-blur) #a8b2c8, 
+      inset calc(var(--shadow-distance) * -1) calc(var(--shadow-distance) * -1) var(--shadow-blur) #ffffff;
+  }
+
+  /* Header */
+  .main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    margin-bottom: 30px;
+  }
+  
+  .main-header h1 {
+    font-size: 2.5rem;
+  }
+
+  button {
+    padding: 12px 24px;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--text-color);
+  }
+
+  button:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 
+      calc(var(--shadow-distance) - 2px) calc(var(--shadow-distance) - 2px) var(--shadow-blur) #a8b2c8, 
+      calc(var(--shadow-distance) * -1 + 2px) calc(var(--shadow-distance) * -1 + 2px) var(--shadow-blur) #ffffff;
+  }
+
+  /* Gallery */
+  .artifacts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 30px;
+  }
+
+  .artifact-card {
+    padding: 20px;
+    text-align: center;
+  }
+
+  .artifact-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 15px;
+  }
+
+  /* Modals */
+  .modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal-content {
+    width: 90%;
+    max-width: 400px;
+    padding: 30px;
+    position: relative;
+  }
+
+  .modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  .close-btn {
+    position: absolute;
+    top: 15px;
+    left: 15px; /* Adjusted for LTR button in RTL context */
+    font-size: 24px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: none;
+    box-sizing: border-box;
+  }
+</style> 

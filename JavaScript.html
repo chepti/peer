@@ -1,0 +1,78 @@
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Modal handling
+  const loginBtn = document.getElementById('login-btn');
+  const loginModal = document.getElementById('login-modal');
+  const registerModal = document.getElementById('register-modal');
+  const showRegisterLink = document.getElementById('show-register');
+  const closeBtns = document.querySelectorAll('.close-btn');
+
+  loginBtn.addEventListener('click', () => {
+    loginModal.style.display = 'flex';
+  });
+
+  showRegisterLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginModal.style.display = 'none';
+    registerModal.style.display = 'flex';
+  });
+
+  closeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      loginModal.style.display = 'none';
+      registerModal.style.display = 'none';
+    });
+  });
+
+  window.addEventListener('click', (e) => {
+    if (e.target == loginModal || e.target == registerModal) {
+      loginModal.style.display = 'none';
+      registerModal.style.display = 'none';
+    }
+  });
+
+  // Form Submissions
+  const loginForm = document.getElementById('login-form');
+  loginForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    // Logic to handle login via google.script.run
+  });
+
+  const registerForm = document.getElementById('register-form');
+  registerForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    // Logic to handle registration via google.script.run
+  });
+  
+  // Initial data load
+  loadGallery();
+
+});
+
+function loadGallery() {
+  // google.script.run.withSuccessHandler(displayArtifacts).getGalleryArtifacts();
+  // Mock data for display
+  const artifactsGrid = document.getElementById('artifacts-grid');
+  artifactsGrid.innerHTML = ''; // Clear existing
+  const mockArtifacts = [
+    { title: 'תוצר לדוגמה 1', previewImageUrl: 'https://via.placeholder.com/300x200', author: 'משתמש1' },
+    { title: 'תוצר לדוגמה 2', previewImageUrl: 'https://via.placeholder.com/300x200', author: 'משתמש2' },
+    { title: 'תוצר לדוגמה 3', previewImageUrl: 'https://via.placeholder.com/300x200', author: 'משתמש3' },
+  ];
+  displayArtifacts(mockArtifacts);
+}
+
+function displayArtifacts(artifacts) {
+  const artifactsGrid = document.getElementById('artifacts-grid');
+  artifacts.forEach(artifact => {
+    const card = document.createElement('div');
+    card.className = 'artifact-card clay-element';
+    card.innerHTML = `
+      <img src="${artifact.previewImageUrl}" alt="${artifact.title}">
+      <h3>${artifact.title}</h3>
+      <p>יוצר: ${artifact.author}</p>
+    `;
+    artifactsGrid.appendChild(card);
+  });
+}
+</script> 
