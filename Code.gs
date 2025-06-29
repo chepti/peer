@@ -250,7 +250,12 @@ function sheetRangeToObjects(range, headers) {
     const obj = {};
     trimmedHeaders.forEach((header, i) => {
       if (header) {
-        obj[header] = row[i];
+        let value = row[i];
+        // Convert Date objects to ISO string format for safe transport to client-side
+        if (value instanceof Date) {
+          value = value.toISOString();
+        }
+        obj[header] = value;
       }
     });
     return obj;
