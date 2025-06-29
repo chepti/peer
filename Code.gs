@@ -492,10 +492,10 @@ function exportToCSV(sheetName) {
   }
 }
 
-// חיפוש תוצרים לפי תגיות
+// חיפוש תוצרים לפי תגיות - משתמש בפונקציה הפשוטה
 function searchArtifacts(searchTerm) {
   try {
-    const allArtifacts = getAllArtifacts();
+    const allArtifacts = getArtifactsSimple();
     
     if (!searchTerm || searchTerm.trim() === '') {
       return allArtifacts;
@@ -588,7 +588,7 @@ function debugArtifacts() {
   }
 }
 
-// פונקציה פשוטה מאוד - כתחליף זמני
+// פונקציה פשוטה מאוד - גרסה מלאה ויציבה
 function getArtifactsSimple() {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
   const data = sheet.getDataRange().getValues();
@@ -597,17 +597,21 @@ function getArtifactsSimple() {
   for (let i = 1; i < data.length; i++) {
     if (data[i][11] === true) {
       result.push({
-        title: data[i][3],
-        submitterUsername: data[i][2],
-        artifactType: data[i][8] || 'אחר',
-        tags: data[i][6] || '',
-        targetAudience: data[i][5] || '',
-        toolUsed: data[i][7] || '',
-        artifactLink: data[i][9] || '#',
-        previewImageUrl: data[i][10] || ''
+        id: String(data[i][0] || 'ART_' + i),
+        submissionTimestamp: data[i][1] || new Date().toISOString(),
+        submitterUsername: String(data[i][2] || ''),
+        title: String(data[i][3] || ''),
+        instructions: String(data[i][4] || ''),
+        targetAudience: String(data[i][5] || ''),
+        tags: String(data[i][6] || ''),
+        toolUsed: String(data[i][7] || ''),
+        artifactType: String(data[i][8] || 'אחר'),
+        artifactLink: String(data[i][9] || '#'),
+        previewImageUrl: String(data[i][10] || ''),
+        likes: Number(data[i][12]) || 0
       });
     }
   }
   
-  return result;
+  return result.reverse(); // החדשים ראשונים
 } 

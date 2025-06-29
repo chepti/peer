@@ -400,11 +400,8 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h2>גלריית התוצרים</h2>
                 <div>
-                    <button class="clay-button" onclick="testConnection()">בדיקת חיבור</button>
-                    <button class="clay-button" onclick="debugArtifactsData()">דיבוג תוצרים</button>
-                    <button class="clay-button" onclick="testGetAllArtifacts()">בדיקת getAllArtifacts</button>
-                    <button class="clay-button" onclick="testSimpleFunction()">בדיקה פשוטה</button>
                     <button class="clay-button" onclick="loadGallery()">רענון</button>
+                    <button class="clay-button" onclick="testConnection()" style="opacity: 0.7; font-size: 0.8em;">בדיקת חיבור</button>
                 </div>
             </div>
             <div id="gallery" class="gallery">
@@ -622,8 +619,12 @@
 
         // פונקציות התחלתיות
         document.addEventListener('DOMContentLoaded', function() {
-            loadGallery();
             setupEventListeners();
+            
+            // טעינת הגלריה לאחר זמן קצר כדי לוודא שהכל נטען
+            setTimeout(() => {
+                loadGallery();
+            }, 500);
         });
 
         function setupEventListeners() {
@@ -826,12 +827,12 @@
                 const gallery = document.getElementById('gallery');
                 gallery.innerHTML = '<div class="clay-card"><p>טוען תוצרים...</p></div>';
                 
-                console.log('Calling getAllArtifacts...');
+                console.log('Calling getArtifactsSimple...');
                 
                 google.script.run
                     .withSuccessHandler(function(artifacts) {
                         console.log('=== Success handler called ===');
-                        console.log('Received from getAllArtifacts:', artifacts);
+                        console.log('Received from getArtifactsSimple:', artifacts);
                         displayArtifacts(artifacts);
                     })
                     .withFailureHandler(function(error) {
@@ -840,9 +841,9 @@
                         showAlert('שגיאה בטעינת הגלריה: ' + error.message, 'error');
                         gallery.innerHTML = '<div class="clay-card"><p>שגיאה בטעינת התוצרים: ' + error.message + '</p></div>';
                     })
-                    .getAllArtifacts();
+                    .getArtifactsSimple();
                     
-                console.log('getAllArtifacts call initiated');
+                console.log('getArtifactsSimple call initiated');
             } catch (error) {
                 console.error('Gallery load error:', error);
                 showAlert('שגיאה בטעינת הגלריה', 'error');
@@ -975,10 +976,26 @@
 
         async function searchArtifacts(searchTerm) {
             try {
+                if (!searchTerm || searchTerm.trim() === '') {
+                    // אם אין טרם חיפוש, הצג את כל התוצרים
+                    loadGallery();
+                    return;
+                }
+                
+                // קבל את כל התוצרים ותסנן אותם
                 google.script.run
-                    .withSuccessHandler(displayArtifacts)
+                    .withSuccessHandler(function(artifacts) {
+                        const term = searchTerm.toLowerCase();
+                        const filtered = artifacts.filter(artifact => 
+                            artifact.title.toLowerCase().includes(term) ||
+                            artifact.tags.toLowerCase().includes(term) ||
+                            artifact.targetAudience.toLowerCase().includes(term) ||
+                            artifact.toolUsed.toLowerCase().includes(term)
+                        );
+                        displayArtifacts(filtered);
+                    })
                     .withFailureHandler(() => showAlert('שגיאה בחיפוש', 'error'))
-                    .searchArtifacts(searchTerm);
+                    .getArtifactsSimple();
             } catch (error) {
                 showAlert('שגיאה בחיפוש', 'error');
             }
