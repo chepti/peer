@@ -2,76 +2,108 @@
 <html dir="rtl">
 <head>
   <base target="_top">
-  <meta charset="UTF-M-^8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>פלטפורמת ביקורת עמיתים</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
   <?!= include('Stylesheet'); ?>
 </head>
 <body>
   <div id="app">
     <!-- Main Header -->
     <header class="main-header">
-      <h1>גלריית תוצרים</h1>
       <div id="user-actions">
-        <button id="login-btn">התחברות</button>
+          <!-- This will be populated by JS based on login state -->
       </div>
+      <nav>
+        <a href="#" class="nav-link active" id="nav-gallery">גלריה</a>
+        <a href="#" class="nav-link" id="nav-add-artifact" style="display:none;">הוספת פריט</a>
+        <a href="#" class="nav-link" id="nav-reviews" style="display:none;">ביקורות</a>
+        <a href="#" class="nav-link" id="nav-profile" style="display:none;">הפרופיל שלי</a>
+        <a href="#" class="nav-link" id="nav-admin" style="display:none;">ניהול</a>
+        <a href="#" class="nav-link" id="nav-logout" style="display:none;">יציאה</a>
+      </nav>
     </header>
 
-    <!-- Gallery View -->
-    <main id="gallery-view">
-      <div class="filter-container">
-        <!-- Tag filters will be dynamically inserted here -->
-      </div>
-      <div id="artifacts-grid" class="artifacts-grid">
-        <!-- Artifact cards will be dynamically inserted here -->
-      </div>
+    <!-- Main Content -->
+    <main>
+        <div id="gallery-view">
+            <div class="page-title-section">
+              <h1>גלריית התוצרים של ההשתלמות</h1>
+              <p>פריטים שיכולים לעזור לכם בהוראה ובלמידה</p>
+            </div>
+            <div class="filter-container">
+              <div class="filter-item">
+                  <input type="search" id="search-input" placeholder="חיפוש פריטים...">
+              </div>
+              <div class="filter-item">
+                  <select id="filter-tags">
+                      <option>כל התגיות</option>
+                  </select>
+              </div>
+              <div class="filter-item">
+                  <select id="filter-types">
+                      <option>כל הסוגים</option>
+                  </select>
+              </div>
+              <div class="filter-item">
+                <select id="filter-tools">
+                    <option>כל הכלים</option>
+                </select>
+            </div>
+            </div>
+            <div id="artifacts-grid" class="artifacts-grid">
+                <!-- Artifact cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Other views (profile, submission form, etc.) will be hidden/shown here -->
+        <div id="profile-view" style="display:none;"></div>
+        <div id="submission-form-view" style="display:none;"></div>
+        <div id="review-view" style="display:none;"></div>
+        <div id="admin-view" style="display:none;"></div>
     </main>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="modal-container" style="display:none;">
+    <div id="login-modal" class="modal-container">
       <div class="modal-content">
         <span class="close-btn">&times;</span>
         <h2>התחברות</h2>
+        <p>כדי להמשיך, יש להתחבר לחשבונך</p>
         <form id="login-form">
           <input type="text" id="login-username" placeholder="שם משתמש" required>
           <input type="password" id="login-password" placeholder="סיסמה" required>
           <button type="submit">התחבר</button>
         </form>
-        <p>אין לך חשבון? <a href="#" id="show-register">הירשם כאן</a></p>
+        <p class="modal-footer-text">אין לך חשבון? <span id="show-register" class="switch-modal-link">הירשם כאן</span></p>
       </div>
     </div>
 
     <!-- Register Modal -->
-    <div id="register-modal" class="modal-container" style="display:none;">
+    <div id="register-modal" class="modal-container">
       <div class="modal-content">
         <span class="close-btn">&times;</span>
         <h2>הרשמה</h2>
+        <p>יצירת חשבון חדש בפלטפורמה</p>
         <form id="register-form">
-            <input type="email" id="register-email" placeholder="אימייל" required>
+            <input type="text" id="register-username" placeholder="שם משתמש (באנגלית)" required>
             <input type="text" id="register-fullname" placeholder="שם מלא" required>
+            <input type="email" id="register-email" placeholder="אימייל" required>
             <input type="password" id="register-password" placeholder="סיסמה" required>
             <select id="register-security-question" required>
                 <option value="" disabled selected>בחר שאלת אבטחה</option>
-                <option value="q1">מהו שם חיית המחמד הראשונה שלך?</option>
-                <option value="q2">מהי עיר הולדתך?</option>
-                <option value="q3">מהו שם הנעורים של אמך?</option>
+                <option value="pet">מהו שם חיית המחמד הראשונה שלך?</option>
+                <option value="city">מהי עיר הולדתך?</option>
+                <option value="mother">מהו שם הנעורים של אמך?</option>
             </select>
             <input type="text" id="register-security-answer" placeholder="תשובתך לשאלת האבטחה" required>
             <button type="submit">הירשם</button>
         </form>
+        <p class="modal-footer-text">יש לך כבר חשבון? <span id="show-login" class="switch-modal-link">התחבר כאן</span></p>
       </div>
     </div>
-
-    <!-- User Profile View -->
-    <div id="profile-view" style="display:none;">
-        <!-- Profile content will be dynamically inserted here -->
-    </div>
-    
-    <!-- Artifact Submission Form -->
-    <div id="submission-form-view" style="display:none;">
-        <!-- Submission form will be here -->
-    </div>
-
   </div>
   <?!= include('JavaScript'); ?>
 </body>

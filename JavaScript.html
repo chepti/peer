@@ -1,78 +1,136 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Modal handling
-  const loginBtn = document.getElementById('login-btn');
+  const state = {
+    currentUser: null
+  };
+
+  // --- DOM Elements ---
   const loginModal = document.getElementById('login-modal');
   const registerModal = document.getElementById('register-modal');
-  const showRegisterLink = document.getElementById('show-register');
-  const closeBtns = document.querySelectorAll('.close-btn');
-
-  loginBtn.addEventListener('click', () => {
-    loginModal.style.display = 'flex';
-  });
-
-  showRegisterLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    loginModal.style.display = 'none';
-    registerModal.style.display = 'flex';
-  });
-
-  closeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      loginModal.style.display = 'none';
-      registerModal.style.display = 'none';
-    });
-  });
-
-  window.addEventListener('click', (e) => {
-    if (e.target == loginModal || e.target == registerModal) {
-      loginModal.style.display = 'none';
-      registerModal.style.display = 'none';
-    }
-  });
-
-  // Form Submissions
   const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const userActions = document.getElementById('user-actions');
+
+  // --- Modal Management ---
+  function setupModal(modal, openTriggers, closeTriggers) {
+    const closeBtn = modal.querySelector('.close-btn');
+    
+    function openModal() { modal.classList.add('show'); }
+    function closeModal() { modal.classList.remove('show'); }
+
+    openTriggers.forEach(triggerId => {
+      document.body.addEventListener('click', function(e) {
+        if (e.target.id === triggerId) {
+          e.preventDefault();
+          openModal();
+        }
+      });
+    });
+
+    closeBtn.addEventListener('click', closeModal);
+    closeTriggers.forEach(triggerId => {
+        const el = document.getElementById(triggerId);
+        if(el) el.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
+    });
+    
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+  }
+
+  setupModal(loginModal, ['login-btn-header', 'show-login'], []);
+  setupModal(registerModal, ['show-register'], ['show-login']);
+
+  document.getElementById('show-register').addEventListener('click', () => {
+      loginModal.classList.remove('show');
+      registerModal.classList.add('show');
+  });
+  document.getElementById('show-login').addEventListener('click', () => {
+      registerModal.classList.remove('show');
+      loginModal.classList.add('show');
+  });
+
+  // --- Authentication ---
   loginForm.addEventListener('submit', function(e) {
     e.preventDefault();
-    // Logic to handle login via google.script.run
-  });
-
-  const registerForm = document.getElementById('register-form');
-  registerForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    // Logic to handle registration via google.script.run
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    // Show loading state
+    google.script.run
+      .withSuccessHandler(onAuthSuccess)
+      .withFailureHandler(onAuthFailure)
+      .loginUser(username, password);
   });
   
-  // Initial data load
-  loadGallery();
+  registerForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const userData = {
+        username: document.getElementById('register-username').value,
+        fullName: document.getElementById('register-fullname').value,
+        password: document.getElementById('register-password').value,
+        securityQuestion: document.getElementById('register-security-question').value,
+        securityAnswer: document.getElementById('register-security-answer').value,
+      };
+      // Show loading state
+      google.script.run
+        .withSuccessHandler(onAuthSuccess)
+        .withFailureHandler(onAuthFailure)
+        .registerUser(userData);
+  });
 
+  function onAuthSuccess(userString) {
+      if (!userString) {
+          onAuthFailure({message: "שם משתמש או סיסמה שגויים."});
+          return;
+      }
+      const user = JSON.parse(userString);
+      if (user.error) {
+          onAuthFailure(user);
+          return;
+      }
+      state.currentUser = user;
+      updateUIForUser();
+      loginModal.classList.remove('show');
+      registerModal.classList.remove('show');
+  }
+
+  function onAuthFailure(error) {
+      alert('שגיאת התחברות: ' + error.message);
+      // Hide loading state
+  }
+  
+  function updateUIForUser() {
+      userActions.innerHTML = '';
+      if(state.currentUser) {
+          document.getElementById('nav-add-artifact').style.display = 'flex';
+          document.getElementById('nav-reviews').style.display = 'flex';
+          document.getElementById('nav-profile').style.display = 'flex';
+          document.getElementById('nav-logout').style.display = 'flex';
+          if(state.currentUser.isAdmin) {
+              document.getElementById('nav-admin').style.display = 'flex';
+          }
+          
+          const avatarInitial = state.currentUser.fullName.charAt(0);
+          userActions.innerHTML = `
+              <div id="user-info">
+                  <span>${state.currentUser.fullName}</span>
+                  <div id="user-avatar">${avatarInitial}</div>
+              </div>
+          `;
+      } else {
+          userActions.innerHTML = `<button id="login-btn-header">התחברות / הרשמה</button>`;
+      }
+  }
+
+  // --- Initial Load ---
+  function init() {
+      updateUIForUser(); // Initially show login button
+      // loadGallery();
+  }
+
+  init();
 });
 
-function loadGallery() {
-  // google.script.run.withSuccessHandler(displayArtifacts).getGalleryArtifacts();
-  // Mock data for display
-  const artifactsGrid = document.getElementById('artifacts-grid');
-  artifactsGrid.innerHTML = ''; // Clear existing
-  const mockArtifacts = [
-    { title: 'תוצר לדוגמה 1', previewImageUrl: 'https://via.placeholder.com/300x200', author: 'משתמש1' },
-    { title: 'תוצר לדוגמה 2', previewImageUrl: 'https://via.placeholder.com/300x200', author: 'משתמש2' },
-    { title: 'תוצר לדוגמה 3', previewImageUrl: 'https://via.placeholder.com/300x200', author: 'משתמש3' },
-  ];
-  displayArtifacts(mockArtifacts);
-}
-
-function displayArtifacts(artifacts) {
-  const artifactsGrid = document.getElementById('artifacts-grid');
-  artifacts.forEach(artifact => {
-    const card = document.createElement('div');
-    card.className = 'artifact-card clay-element';
-    card.innerHTML = `
-      <img src="${artifact.previewImageUrl}" alt="${artifact.title}">
-      <h3>${artifact.title}</h3>
-      <p>יוצר: ${artifact.author}</p>
-    `;
-    artifactsGrid.appendChild(card);
-  });
-}
+// Mock functions for now
+// function loadGallery() {}
 </script> 
