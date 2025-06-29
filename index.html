@@ -335,6 +335,80 @@
             color: #FFD700;
         }
 
+        .user-profile-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 
+                8px 8px 16px var(--shadow-dark),
+                -8px -8px 16px var(--shadow-light);
+        }
+
+        .profile-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            display: block;
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .stat-status {
+            display: block;
+            font-size: 1.2em;
+            font-weight: bold;
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+
+        .stat-status.eligible {
+            color: white;
+            background: var(--success-color);
+        }
+
+        .stat-status.not-eligible {
+            color: white;
+            background: var(--warning-color);
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+
+        .artifacts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .profile-artifact-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 
+                6px 6px 12px var(--shadow-dark),
+                -6px -6px 12px var(--shadow-light);
+        }
+
+        .profile-artifact-card h4 {
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
         @media (max-width: 768px) {
             .nav-bar {
                 flex-direction: column;
@@ -401,7 +475,8 @@
                 <h2>גלריית התוצרים</h2>
                 <div>
                     <button class="clay-button" onclick="loadGallery()">רענון</button>
-                    <button class="clay-button" onclick="testConnection()" style="opacity: 0.7; font-size: 0.8em;">בדיקת חיבור</button>
+                    <button class="clay-button" onclick="runQuickTest()" style="opacity: 0.7; font-size: 0.8em;">בדיקה מהירה</button>
+                    <button class="clay-button" onclick="addTestUser()" style="opacity: 0.7; font-size: 0.8em;">הוסף משתמש בדיקה</button>
                 </div>
             </div>
             <div id="gallery" class="gallery">
@@ -611,6 +686,21 @@
         </div>
     </div>
 
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('profileModal')">&times;</span>
+                <h2>הפרופיל שלי</h2>
+            </div>
+            <div class="modal-body">
+                <div id="profileContent">
+                    <!-- תוכן הפרופיל יטען כאן -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // משתנים גלובליים
         let currentUser = null;
@@ -718,8 +808,68 @@
                 alert('יש להתחבר תחילה');
                 return;
             }
-            // יישום עמוד פרופיל
-            alert('עמוד פרופיל בפיתוח');
+            loadUserProfile();
+            document.getElementById('profileModal').style.display = 'block';
+        }
+
+        async function loadUserProfile() {
+            try {
+                // טען את התוצרים של המשתמש
+                google.script.run
+                    .withSuccessHandler(function(artifacts) {
+                        displayUserProfile(artifacts);
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('Error loading user profile:', error);
+                        showAlert('שגיאה בטעינת הפרופיל', 'error');
+                    })
+                    .getUserArtifacts(currentUser.username);
+            } catch (error) {
+                console.error('Profile load error:', error);
+                showAlert('שגיאה בטעינת הפרופיל', 'error');
+            }
+        }
+
+        function displayUserProfile(artifacts) {
+            const profileContent = document.getElementById('profileContent');
+            profileContent.innerHTML = `
+                <div class="user-profile-header">
+                    <h2>${currentUser.fullName}</h2>
+                    <p><strong>שם משתמש:</strong> ${currentUser.username}</p>
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <span class="stat-number">${currentUser.submissionsCount}</span>
+                            <span class="stat-label">תוצרים</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">${currentUser.reviewsCompletedCount}</span>
+                            <span class="stat-label">ביקורות</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-status ${currentUser.isEligible ? 'eligible' : 'not-eligible'}">
+                                ${currentUser.isEligible ? 'זכאי' : 'לא זכאי'}
+                            </span>
+                            <span class="stat-label">סטטוס</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="user-artifacts">
+                    <h3>התוצרים שלי</h3>
+                    <div class="artifacts-grid">
+                        ${artifacts.map(artifact => `
+                            <div class="profile-artifact-card">
+                                <h4>${artifact.title}</h4>
+                                <p><strong>קהל יעד:</strong> ${artifact.targetAudience}</p>
+                                <p><strong>כלי:</strong> ${artifact.toolUsed}</p>
+                                <div class="artifact-tags">
+                                    ${artifact.tags.split(',').map(tag => `<span class="tag">${tag.trim()}</span>`).join('')}
+                                </div>
+                                <button class="clay-button" onclick="openArtifact('${artifact.artifactLink}')">צפה</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
         }
 
         function closeModal(modalId) {
@@ -1165,22 +1315,39 @@
             showAlert('שגיאה בשליחת הביקורת: ' + error.message, 'error');
         }
 
-        // פונקציות דיבוג
-        function testConnection() {
+        // פונקציות דיבוג ותיקונים מהירים
+        function runQuickTest() {
             google.script.run
                 .withSuccessHandler(function(result) {
-                    console.log('Test result:', result);
+                    console.log('Quick test result:', result);
+                    let message = `בדיקה מהירה:\n`;
+                    message += `גישה לגליון: ${result.spreadsheetAccess ? '✅' : '❌'}\n`;
+                    message += `גליון Users: ${result.usersSheetExists ? '✅' : '❌'} (${result.usersCount} משתמשים)\n`;
+                    message += `גליון Artifacts: ${result.artifactsSheetExists ? '✅' : '❌'} (${result.artifactsCount} תוצרים, ${result.publishedArtifactsCount} מפורסמים)\n`;
+                    
+                    showAlert(message, result.spreadsheetAccess ? 'success' : 'error');
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Quick test error:', error);
+                    showAlert('שגיאה בבדיקה מהירה: ' + error.message, 'error');
+                })
+                .quickTest();
+        }
+
+        function addTestUser() {
+            google.script.run
+                .withSuccessHandler(function(result) {
                     if (result.success) {
-                        showAlert(`חיבור תקין! נמצאו ${result.rowCount} שורות בגליון`, 'success');
+                        showAlert(result.message + '\nכעת ניתן להתחבר עם: test/123', 'success');
                     } else {
-                        showAlert('שגיאה בחיבור: ' + result.message, 'error');
+                        showAlert('שגיאה בהוספת משתמש: ' + result.message, 'error');
                     }
                 })
                 .withFailureHandler(function(error) {
-                    console.error('Test connection error:', error);
-                    showAlert('שגיאה בבדיקת החיבור: ' + error.message, 'error');
+                    console.error('Add test user error:', error);
+                    showAlert('שגיאה בהוספת משתמש: ' + error.message, 'error');
                 })
-                .testSheetConnection();
+                .addTestUser();
         }
 
         function debugArtifactsData() {
