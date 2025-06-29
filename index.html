@@ -393,6 +393,7 @@
                 <div>
                     <button class="clay-button" onclick="testConnection()">בדיקת חיבור</button>
                     <button class="clay-button" onclick="debugArtifactsData()">דיבוג תוצרים</button>
+                    <button class="clay-button" onclick="testGetAllArtifacts()">בדיקת getAllArtifacts</button>
                     <button class="clay-button" onclick="loadGallery()">רענון</button>
                 </div>
             </div>
@@ -808,19 +809,30 @@
 
         // פונקציות גלריה
         async function loadGallery() {
+            console.log('=== loadGallery called ===');
+            
             try {
                 // הוספת אינדיקטור טעינה
                 const gallery = document.getElementById('gallery');
                 gallery.innerHTML = '<div class="clay-card"><p>טוען תוצרים...</p></div>';
                 
+                console.log('Calling getAllArtifacts...');
+                
                 google.script.run
-                    .withSuccessHandler(displayArtifacts)
+                    .withSuccessHandler(function(artifacts) {
+                        console.log('=== Success handler called ===');
+                        console.log('Received from getAllArtifacts:', artifacts);
+                        displayArtifacts(artifacts);
+                    })
                     .withFailureHandler(function(error) {
+                        console.error('=== Failure handler called ===');
                         console.error('Error loading gallery:', error);
                         showAlert('שגיאה בטעינת הגלריה: ' + error.message, 'error');
-                        gallery.innerHTML = '<div class="clay-card"><p>שגיאה בטעינת התוצרים</p></div>';
+                        gallery.innerHTML = '<div class="clay-card"><p>שגיאה בטעינת התוצרים: ' + error.message + '</p></div>';
                     })
                     .getAllArtifacts();
+                    
+                console.log('getAllArtifacts call initiated');
             } catch (error) {
                 console.error('Gallery load error:', error);
                 showAlert('שגיאה בטעינת הגלריה', 'error');
@@ -828,59 +840,111 @@
         }
 
         function displayArtifacts(artifacts) {
+            console.log('=== displayArtifacts called ===');
             console.log('Received artifacts:', artifacts);
+            console.log('Type of artifacts:', typeof artifacts);
+            console.log('Is array:', Array.isArray(artifacts));
+            console.log('Length:', artifacts ? artifacts.length : 'undefined');
+            
             allArtifacts = artifacts || [];
             const gallery = document.getElementById('gallery');
+            
+            if (!artifacts) {
+                console.log('artifacts is null/undefined');
+                gallery.innerHTML = '<div class="clay-card"><p>שגיאה: לא התקבלו נתונים מהגליון</p></div>';
+                return;
+            }
+            
+            if (!Array.isArray(artifacts)) {
+                console.log('artifacts is not an array:', artifacts);
+                gallery.innerHTML = '<div class="clay-card"><p>שגיאה: הנתונים שהתקבלו אינם מערך</p></div>';
+                return;
+            }
+            
             gallery.innerHTML = '';
             
-            if (!artifacts || artifacts.length === 0) {
+            if (artifacts.length === 0) {
+                console.log('artifacts array is empty');
                 gallery.innerHTML = '<div class="clay-card"><p>אין תוצרים להצגה. ודא שהגליון מכיל נתונים עם isPublished = TRUE</p></div>';
                 return;
             }
             
+            console.log('Processing', artifacts.length, 'artifacts...');
+            
             artifacts.forEach((artifact, index) => {
                 try {
+                    console.log('Creating card for artifact', index, ':', artifact);
                     const card = createArtifactCard(artifact);
                     gallery.appendChild(card);
+                    console.log('Card created successfully for artifact', index);
                 } catch (error) {
                     console.error('Error creating artifact card for index', index, ':', error);
                     console.error('Artifact data:', artifact);
+                    
+                    // הוספת כרטיס שגיאה
+                    const errorCard = document.createElement('div');
+                    errorCard.className = 'clay-card';
+                    errorCard.innerHTML = `<p>שגיאה בתצוגת תוצר ${index + 1}</p>`;
+                    gallery.appendChild(errorCard);
                 }
             });
             
-            // הוספת הודעה על מספר התוצרים
-            if (artifacts.length > 0) {
-                console.log('Successfully displayed', artifacts.length, 'artifacts');
-            }
+            console.log('=== displayArtifacts completed ===');
+            console.log('Successfully processed', artifacts.length, 'artifacts');
         }
 
         function createArtifactCard(artifact) {
-            const card = document.createElement('div');
-            card.className = 'clay-card artifact-card';
+            console.log('createArtifactCard called with:', artifact);
             
-            const imageUrl = artifact.previewImageUrl || '#';
-            const tags = artifact.tags.split(',').map(tag => tag.trim());
-            
-            card.innerHTML = `
-                <div class="artifact-image">
-                    ${artifact.previewImageUrl ? 
-                        `<img src="${artifact.previewImageUrl}" alt="${artifact.title}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;">` :
-                        getArtifactIcon(artifact.artifactType)
-                    }
-                </div>
-                <div class="artifact-info">
-                    <h3>${artifact.title}</h3>
-                    <p><strong>יוצר:</strong> ${artifact.submitterUsername}</p>
-                    <p><strong>קהל יעד:</strong> ${artifact.targetAudience}</p>
-                    <p><strong>כלי:</strong> ${artifact.toolUsed}</p>
-                    <div class="artifact-tags">
-                        ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+            try {
+                const card = document.createElement('div');
+                card.className = 'clay-card artifact-card';
+                
+                const imageUrl = artifact.previewImageUrl || '';
+                const tags = (artifact.tags || '').split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+                
+                console.log('Processing tags:', tags);
+                
+                const cardHTML = `
+                    <div class="artifact-image">
+                        ${artifact.previewImageUrl ? 
+                            `<img src="${artifact.previewImageUrl}" alt="${artifact.title}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;">` :
+                            getArtifactIcon(artifact.artifactType || 'אחר')
+                        }
                     </div>
-                    <button class="clay-button primary" onclick="openArtifact('${artifact.artifactLink}')">צפה בתוצר</button>
-                </div>
-            `;
-            
-            return card;
+                    <div class="artifact-info">
+                        <h3>${artifact.title || 'ללא כותרת'}</h3>
+                        <p><strong>יוצר:</strong> ${artifact.submitterUsername || 'לא ידוע'}</p>
+                        <p><strong>קהל יעד:</strong> ${artifact.targetAudience || 'לא צוין'}</p>
+                        <p><strong>כלי:</strong> ${artifact.toolUsed || 'לא צוין'}</p>
+                        <div class="artifact-tags">
+                            ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
+                        <button class="clay-button primary" onclick="openArtifact('${artifact.artifactLink || '#'}')">צפה בתוצר</button>
+                    </div>
+                `;
+                
+                console.log('Generated HTML:', cardHTML);
+                card.innerHTML = cardHTML;
+                
+                console.log('Card created successfully');
+                return card;
+            } catch (error) {
+                console.error('Error in createArtifactCard:', error);
+                console.error('Artifact data causing error:', artifact);
+                
+                // יצירת כרטיס שגיאה פשוט
+                const errorCard = document.createElement('div');
+                errorCard.className = 'clay-card';
+                errorCard.innerHTML = `
+                    <div class="artifact-info">
+                        <h3>שגיאה בתצוגה</h3>
+                        <p>תוצר: ${artifact ? artifact.title : 'לא ידוע'}</p>
+                        <p>שגיאה: ${error.message}</p>
+                    </div>
+                `;
+                return errorCard;
+            }
         }
 
         function getArtifactIcon(type) {
@@ -1108,6 +1172,30 @@
                     showAlert('שגיאה בדיבוג התוצרים: ' + error.message, 'error');
                 })
                 .debugArtifacts();
+        }
+
+        function testGetAllArtifacts() {
+            console.log('=== Testing getAllArtifacts directly ===');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    console.log('=== getAllArtifacts direct test result ===');
+                    console.log('Type:', typeof result);
+                    console.log('Is array:', Array.isArray(result));
+                    console.log('Length:', result ? result.length : 'undefined');
+                    console.log('Full result:', result);
+                    
+                    if (result && Array.isArray(result)) {
+                        showAlert(`getAllArtifacts החזיר ${result.length} תוצרים`, 'success');
+                        console.table(result);
+                    } else {
+                        showAlert('getAllArtifacts החזיר נתונים לא תקינים', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('getAllArtifacts test error:', error);
+                    showAlert('שגיאה בבדיקת getAllArtifacts: ' + error.message, 'error');
+                })
+                .getAllArtifacts();
         }
 
         // פונקציות עזר

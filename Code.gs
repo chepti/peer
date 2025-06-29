@@ -222,19 +222,23 @@ function getAllArtifacts() {
     const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
     const data = sheet.getDataRange().getValues();
     
-    console.log('Total rows in Artifacts sheet:', data.length);
+    console.log('getAllArtifacts - Total rows in Artifacts sheet:', data.length);
     
     const artifacts = [];
-          for (let i = 1; i < data.length; i++) {
-        // בדיקה שהשורה לא ריקה
-        if (data[i][0] && data[i][3]) { // יש ID ויש title
-          const isPublished = data[i][11];
-          console.log('Row', i, '- ID:', data[i][0], 'Title:', data[i][3], 'isPublished:', isPublished, 'Type:', typeof isPublished);
-          
-          // בדיקה גמישה מאוד של isPublished - כולל בדיקה של המחרוזת
-          const publishedCheck = String(isPublished).toUpperCase().trim();
-          if (isPublished === true || publishedCheck === 'TRUE' || isPublished === 1 || publishedCheck === '1') {
-          artifacts.push({
+    for (let i = 1; i < data.length; i++) {
+      // בדיקה שהשורה לא ריקה
+      if (data[i][0] && data[i][3]) { // יש ID ויש title
+        const isPublished = data[i][11];
+        console.log('getAllArtifacts - Row', i, '- ID:', data[i][0], 'Title:', data[i][3], 'isPublished:', isPublished, 'Type:', typeof isPublished);
+        
+        // בדיקה גמישה מאוד של isPublished - כולל בדיקה של המחרוזת
+        const publishedCheck = String(isPublished).toUpperCase().trim();
+        const shouldInclude = isPublished === true || publishedCheck === 'TRUE' || isPublished === 1 || publishedCheck === '1';
+        
+        console.log('getAllArtifacts - Will include:', shouldInclude);
+        
+        if (shouldInclude) {
+          const artifact = {
             id: data[i][0] || '',
             submissionTimestamp: data[i][1] || '',
             submitterUsername: data[i][2] || '',
@@ -247,13 +251,20 @@ function getAllArtifacts() {
             artifactLink: data[i][9] || '',
             previewImageUrl: data[i][10] || '',
             likes: data[i][12] || 0
-          });
+          };
+          
+          console.log('getAllArtifacts - Adding artifact:', artifact);
+          artifacts.push(artifact);
         }
       }
     }
     
-    console.log('Found', artifacts.length, 'published artifacts');
-    return artifacts.reverse(); // החדשים ראשונים
+    console.log('getAllArtifacts - Found', artifacts.length, 'published artifacts');
+    console.log('getAllArtifacts - Final artifacts array:', artifacts);
+    
+    const finalResult = artifacts.reverse(); // החדשים ראשונים
+    console.log('getAllArtifacts - Returning:', finalResult);
+    return finalResult;
   } catch (error) {
     console.error('Error in getAllArtifacts:', error);
     return [];
