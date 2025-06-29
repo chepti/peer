@@ -133,6 +133,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // =================================================================
   //      EVENT LISTENERS & LOGIC
   // =================================================================
+  
+  function closeModal(modal) {
+    if (modal) modal.classList.remove('show');
+  }
+
   function setupEventListeners() {
     // Navigation
     document.querySelector('nav').addEventListener('click', (e) => {
@@ -175,10 +180,6 @@ document.addEventListener('DOMContentLoaded', function() {
         registerModal.classList.add('show');
       }
     });
-
-    function closeModal(modal) {
-      modal.classList.remove('show');
-    }
     
     [loginModal, registerModal].forEach(modal => {
         modal.querySelector('.close-btn').addEventListener('click', () => closeModal(modal));
