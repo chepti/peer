@@ -1,14 +1,30 @@
-// This is the server-side script for the Peer Review Platform.
-
+// =================================================================
+//      GLOBAL CONFIGURATION
+// =================================================================
 const SPREADSHEET_ID = '164XaMFX9EVAmNQPG6ecxVbx4XxUUOvurYdUBhjYoK0k';
-
-const sheetUsers = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("Users");
-const sheetArtifacts = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("Artifacts");
-const sheetReviews = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("Reviews");
-const sheetAssignments = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("Assignments");
 const UPLOAD_FOLDER_ID = '1_JwHrGcL3Via1OnOseSC4KHhnRzbRvPj';
 const ADMIN_USERNAMES = ['admin', 'chepti']; // Use usernames for admin rights
 
+// Sheet Names
+const SHEETS = {
+  USERS: 'Users',
+  ARTIFACTS: 'Artifacts',
+  REVIEWS: 'Reviews',
+  ASSIGNMENTS: 'Assignments'
+};
+
+// Column Names - MUST MATCH THE HEADERS IN THE GOOGLE SHEET EXACTLY
+const COLS = {
+  ARTIFACTS: {
+    SUBMITTER_USERNAME: 'submitterUsername',
+    AUTHOR_FULL_NAME: 'authorFullName' // This is a virtual column, added dynamically
+  }
+};
+
+
+// =================================================================
+//      WEB APP ENTRY POINTS
+// =================================================================
 function doGet(e) {
   return HtmlService.createTemplateFromFile('Index').evaluate()
       .setTitle("פלטפורמת ביקורת עמיתים")
@@ -19,104 +35,224 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-// User Management
-function registerUser(userData) {
-  try {
-    if (!sheetUsers) {
-      throw new Error("'Users' sheet not found.");
-    }
-    const { username, fullName, password, securityQuestion, securityAnswer } = userData;
-    
-    const usernames = sheetUsers.getRange("A2:A").getValues().flat().filter(String);
-    if (usernames.includes(username)) {
-      return JSON.stringify({ error: "שם המשתמש כבר קיים." });
-    }
 
-    // `username` | `fullName` | `password` | `securityQuestion` | `securityAnswer` | `submissionsCount` | `reviewsCompletedCount` | `isEligible`
-    const newUserRow = [username, fullName, password, securityQuestion, securityAnswer, 0, 0, false];
-    sheetUsers.appendRow(newUserRow);
-    
-    return JSON.stringify({
-      username: username,
-      fullName: fullName,
-      isAdmin: ADMIN_USERNAMES.includes(username)
-    });
-  } catch (e) {
-    Logger.log('Registration Error: ' + e.message);
-    return JSON.stringify({ error: e.message });
+// =================================================================
+//      AUTHENTICATION & SESSION MANAGEMENT
+// =================================================================
+function checkUserSession() {
+  const username = PropertiesService.getUserProperties().getProperty('username');
+  if (!username) {
+    return null;
   }
+  const allUsers = getAllUsers();
+  const userData = allUsers.find(u => u.username === username);
+
+  if (userData) {
+    return {
+      username: userData.username,
+      fullName: userData.fullName,
+      isAdmin: ADMIN_USERNAMES.includes(userData.username.toLowerCase())
+    };
+  }
+  return null;
+}
+
+function registerUser(userDetails) {
+  const { usersSheet } = getSheets();
+  const allUsers = getAllUsers();
+
+  if (!userDetails.username || !userDetails.password || !userDetails.fullName) {
+    throw new Error('יש למלא את כל השדות.');
+  }
+  
+  const existingUser = allUsers.find(u => u.username.toLowerCase() === userDetails.username.toLowerCase());
+  if (existingUser) {
+    throw new Error('שם המשתמש תפוס.');
+  }
+
+  const newUserRow = [
+    userDetails.username,
+    userDetails.fullName,
+    userDetails.password,
+    userDetails.question,
+    userDetails.answer
+  ];
+  
+  usersSheet.appendRow(newUserRow);
+  SpreadsheetApp.flush();
+
+  return { success: true, message: 'ההרשמה בוצעה בהצלחה!' };
 }
 
 function loginUser(username, password) {
-  try {
-    if (!sheetUsers) {
-      throw new Error("'Users' sheet not found.");
-    }
-    const data = sheetUsers.getDataRange().getValues();
-    // Start from 1 to skip header row
-    for (let i = 1; i < data.length; i++) {
-      // username is in col 0 (A), password in col 2 (C)
-      if (data[i][0] === username && data[i][2] === password) {
-        // Return user object but without password
-        return JSON.stringify({
-          username: data[i][0],
-          fullName: data[i][1],
-          isAdmin: ADMIN_USERNAMES.includes(data[i][0])
-        });
-      }
-    }
-    return null; // User not found or password incorrect
-  } catch (e) {
-    Logger.log('Login Error: ' + e.message);
-    return JSON.stringify({ error: e.message });
+  const allUsers = getAllUsers();
+  const user = allUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+
+  if (!user) {
+    throw new Error('שם משתמש או סיסמה שגויים.');
   }
+
+  if (user.password !== password) {
+    throw new Error('שם משתמש או סיסמה שגויים.');
+  }
+  
+  PropertiesService.getUserProperties().setProperty('username', user.username);
+
+  return {
+    username: user.username,
+    fullName: user.fullName,
+    isAdmin: ADMIN_USERNAMES.includes(user.username.toLowerCase())
+  };
 }
 
-function getUserProfile(username) {
-  // Implementation to get user profile data and their submitted artifacts.
+function logoutUser() {
+  PropertiesService.getUserProperties().deleteProperty('username');
+  return { success: true };
 }
 
-// Artifact Management
-function submitArtifact(artifactData) {
-  // Implementation to add a new artifact to the 'Artifacts' sheet.
-  // After submission, trigger review assignments.
+
+// =================================================================
+//      PRIMARY API FUNCTIONS (Called from client)
+// =================================================================
+function getInitialAppData() {
+  const user = checkUserSession();
+  if (!user) {
+    return { user: null, gallery: [], mySubmissions: [], myReviews: [] };
+  }
+
+  const allUsers = getAllUsers();
+  const allArtifacts = getAllArtifacts();
+  
+  const userMap = new Map(allUsers.map(u => [u.username, u.fullName]));
+
+  const gallery = allArtifacts
+    .filter(art => art.isPublished == true || String(art.isPublished).toLowerCase() === 'true')
+    .map(art => ({
+      ...art,
+      [COLS.ARTIFACTS.AUTHOR_FULL_NAME]: userMap.get(art[COLS.ARTIFACTS.SUBMITTER_USERNAME]) || 'אלמוני'
+    }));
+
+  const mySubmissions = allArtifacts
+    .filter(art => art[COLS.ARTIFACTS.SUBMITTER_USERNAME] === user.username)
+     .map(art => ({
+      ...art,
+      [COLS.ARTIFACTS.AUTHOR_FULL_NAME]: user.fullName
+    }));
+    
+  const myReviews = getReviewAssignmentsForUser(user.username);
+
+  return {
+    user: user,
+    gallery: gallery,
+    mySubmissions: mySubmissions,
+    myReviews: myReviews
+  };
 }
 
-function getGalleryArtifacts(tag = null) {
-  // Implementation to get all published artifacts, optionally filtered by a tag.
+function submitArtifact(formData, previewImageData) {
+  const user = checkUserSession();
+  if (!user) {
+    throw new Error('אינך מחובר. יש לרענן את הדף ולהתחבר.');
+  }
+
+  const { artifactsSheet } = getSheets();
+  
+  let previewUrl = '';
+  if (previewImageData && previewImageData.base64) {
+    try {
+      const folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+      const blob = Utilities.newBlob(Utilities.base64Decode(previewImageData.base64), previewImageData.type, previewImageData.name);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      previewUrl = file.getUrl();
+    } catch (e) {
+      Logger.log('Error uploading file to Drive: ' + e.message);
+      throw new Error('שגיאה בהעלאת התמונה.');
+    }
+  } else {
+    throw new Error('נדרשת תמונה מייצגת.');
+  }
+
+  const headers = artifactsSheet.getRange(1, 1, 1, artifactsSheet.getLastColumn()).getValues()[0];
+  const lastId = artifactsSheet.getLastRow() > 1 ? artifactsSheet.getRange(artifactsSheet.getLastRow(), 1).getValue() : 0;
+  const newId = (typeof lastId === 'number' ? lastId : 0) + 1;
+
+  const newRowObject = {
+    'id': newId,
+    'submissionTimestamp': new Date(),
+    'submitterUsername': user.username,
+    'title': formData.title,
+    'instructions': formData.instructions,
+    'targetAudience': formData.targetAudience,
+    'tags': formData.tags,
+    'toolUsed': formData.toolUsed,
+    'artifactType': formData.artifactType,
+    'artifactLink': formData.artifactLink || '',
+    'previewImageUrl': previewUrl,
+    'isPublished': true,
+    'likes': 0
+  };
+  
+  const newRow = headers.map(header => newRowObject[header.trim()] !== undefined ? newRowObject[header.trim()] : '');
+
+  artifactsSheet.appendRow(newRow);
+  SpreadsheetApp.flush();
+
+  return { success: true, message: 'התוצר הוגש בהצלחה!' };
 }
 
-function getArtifactDetails(artifactId) {
-    // Implementation to get details for a single artifact, including its reviews.
+// =================================================================
+//      DATA RETRIEVAL & UTILITY FUNCTIONS
+// =================================================================
+function getReviewAssignmentsForUser(username) {
+  // Placeholder for future implementation
+  return [];
 }
 
-// Review Management
-function assignReviews(submitterUsername, artifactId) {
-  // Silently assign 5 random users (not the submitter) to review the artifact.
-  // Add assignments to the 'Assignments' sheet.
+function getAllUsers() {
+  const { usersSheet } = getSheets();
+  if (!usersSheet) {
+    Logger.log('Error: Sheet with name "' + SHEETS.USERS + '" not found.');
+    return []; // Return empty array to prevent crash
+  }
+  if (usersSheet.getLastRow() < 2) return [];
+  const range = usersSheet.getRange(2, 1, usersSheet.getLastRow() - 1, usersSheet.getLastColumn());
+  return sheetRangeToObjects(range, usersSheet.getRange(1, 1, 1, usersSheet.getLastColumn()).getValues()[0]);
 }
 
-function getAssignedReviews(username) {
-  // Get all artifacts assigned to a user for review.
+function getAllArtifacts() {
+    const { artifactsSheet } = getSheets();
+    if (!artifactsSheet) {
+      Logger.log('Error: Sheet with name "' + SHEETS.ARTIFACTS + '" not found.');
+      return []; // Return empty array to prevent crash
+    }
+    if (artifactsSheet.getLastRow() < 2) return [];
+    const range = artifactsSheet.getRange(2, 1, artifactsSheet.getLastRow() - 1, artifactsSheet.getLastColumn());
+    return sheetRangeToObjects(range, artifactsSheet.getRange(1, 1, 1, artifactsSheet.getLastColumn()).getValues()[0]);
 }
 
-function submitReview(reviewData) {
-  // Add a review to the 'Reviews' sheet and update the assignment status.
-  // Check if the user is now eligible for something.
+function getSheets() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  return {
+    ss: ss,
+    usersSheet: ss.getSheetByName(SHEETS.USERS),
+    artifactsSheet: ss.getSheetByName(SHEETS.ARTIFACTS),
+    reviewsSheet: ss.getSheetByName(SHEETS.REVIEWS),
+    assignmentsSheet: ss.getSheetByName(SHEETS.ASSIGNMENTS)
+  };
 }
 
-// Admin Functions
-function getAllData() {
-    // Function to be called by an admin to get all data from all sheets.
-    // This requires checking if the caller is an admin.
+function sheetRangeToObjects(range, headers) {
+  const values = range.getValues();
+  const trimmedHeaders = headers.map(h => String(h).trim());
+  
+  return values.map((row) => {
+    const obj = {};
+    trimmedHeaders.forEach((header, i) => {
+      if (header) {
+        obj[header] = row[i];
+      }
+    });
+    return obj;
+  });
 }
-
-function exportToCsv() {
-    // Generates a CSV file from all sheets.
-}
-
-// Utility Functions
-function checkEligibility(username) {
-    // Check if a user has submitted 5 artifacts and completed 3 reviews.
-    // Updates the 'isEligible' status in the 'Users' sheet.
-} 
