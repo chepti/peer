@@ -476,7 +476,8 @@
                 <div>
                     <button class="clay-button" onclick="loadGallery()">רענון</button>
                     <button class="clay-button" onclick="runQuickTest()" style="opacity: 0.7; font-size: 0.8em;">בדיקה מהירה</button>
-                    <button class="clay-button" onclick="addTestUser()" style="opacity: 0.7; font-size: 0.8em;">הוסף משתמש בדיקה</button>
+                    <button class="clay-button" onclick="debugArtifacts()" style="opacity: 0.7; font-size: 0.8em;">בדיקת תוצרים</button>
+                    <button class="clay-button" onclick="addSampleArtifacts()" style="opacity: 0.7; font-size: 0.8em; background: #4CAF50;">➕ הוסף תוצרים</button>
                 </div>
             </div>
             <div id="gallery" class="gallery">
@@ -1334,20 +1335,47 @@
                 .quickTest();
         }
 
-        function addTestUser() {
+        function debugArtifacts() {
             google.script.run
                 .withSuccessHandler(function(result) {
-                    if (result.success) {
-                        showAlert(result.message + '\nכעת ניתן להתחבר עם: test/123', 'success');
+                    console.log('Debug artifacts result:', result);
+                    if (result.error) {
+                        showAlert('שגיאה בבדיקת תוצרים: ' + result.error, 'error');
                     } else {
-                        showAlert('שגיאה בהוספת משתמש: ' + result.message, 'error');
+                        let message = `בדיקת תוצרים:\nנמצאו ${result.length} שורות בגליון\n\n`;
+                        result.forEach((row, index) => {
+                            if (index > 0) { // לא הכותרות
+                                message += `${row.title || 'ללא כותרת'} - Published: ${row.isPublished} (${row.isPublishedType})\n`;
+                            }
+                        });
+                        showAlert(message, 'info');
                     }
                 })
                 .withFailureHandler(function(error) {
-                    console.error('Add test user error:', error);
-                    showAlert('שגיאה בהוספת משתמש: ' + error.message, 'error');
+                    console.error('Debug artifacts error:', error);
+                    showAlert('שגיאה בבדיקת תוצרים: ' + error.message, 'error');
                 })
-                .addTestUser();
+                .debugArtifactsRaw();
+        }
+
+        function addSampleArtifacts() {
+            if (!confirm('להוסיף 3 תוצרים לדוגמה לגליון?')) return;
+            
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    if (result.success) {
+                        showAlert(result.message + '\nכעת לחץ רענון כדי לראות את התוצרים!', 'success');
+                        // רענון אוטומטי אחרי 2 שניות
+                        setTimeout(loadGallery, 2000);
+                    } else {
+                        showAlert('שגיאה בהוספת תוצרים: ' + result.message, 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Add sample artifacts error:', error);
+                    showAlert('שגיאה בהוספת תוצרים: ' + error.message, 'error');
+                })
+                .addSampleArtifacts();
         }
 
         function debugArtifactsData() {

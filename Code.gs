@@ -364,6 +364,107 @@ function addTestUser() {
   }
 }
 
+// פונקציה לבדיקת נתוני Artifacts - מה בדיוק יש שם?
+function debugArtifactsRaw() {
+  try {
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+    const data = sheet.getDataRange().getValues();
+    
+    console.log('=== DEBUG ARTIFACTS RAW ===');
+    console.log('Total rows:', data.length);
+    
+    const result = [];
+    for (let i = 0; i < data.length; i++) {
+      const row = {
+        rowIndex: i,
+        id: data[i][0],
+        timestamp: data[i][1],
+        username: data[i][2],
+        title: data[i][3],
+        isPublished: data[i][11],
+        isPublishedType: typeof data[i][11],
+        isPublishedString: String(data[i][11])
+      };
+      console.log(`Row ${i}:`, row);
+      result.push(row);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('debugArtifactsRaw error:', error);
+    return { error: error.message };
+  }
+}
+
+// הוספת תוצרים לדוגמה - פותר הכל!
+function addSampleArtifacts() {
+  try {
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+    
+    const sampleArtifacts = [
+      [
+        'ART001',
+        new Date().toISOString(),
+        'test',
+        'משחק חינוכי באנגלית',
+        'משחק אינטראקטיבי ללימוד מילים באנגלית',
+        'תלמידי יסודי',
+        'אנגלית, משחק, חינוכי',
+        'Scratch',
+        'משחק',
+        'https://scratch.mit.edu/projects/123456/',
+        'https://via.placeholder.com/300x200?text=English+Game',
+        true,
+        0
+      ],
+      [
+        'ART002',
+        new Date().toISOString(),
+        'test',
+        'סרטון הסברה למתמטיקה',
+        'סרטון המסביר שברים בצורה חזותית',
+        'כיתות ד-ו',
+        'מתמטיקה, שברים, סרטון',
+        'Canva',
+        'סרטון',
+        'https://www.youtube.com/watch?v=example',
+        'https://via.placeholder.com/300x200?text=Math+Video',
+        true,
+        0
+      ],
+      [
+        'ART003',
+        new Date().toISOString(),
+        'test',
+        'מצגת על מערכת השמש',
+        'מצגת אינטראקטיבית עם אנימציות',
+        'תלמידי חטיבה',
+        'מדעים, חלל, אסטרונומיה',
+        'PowerPoint',
+        'מצגת',
+        'https://example.com/solar-system.pptx',
+        'https://via.placeholder.com/300x200?text=Solar+System',
+        true,
+        0
+      ]
+    ];
+    
+    // הוסף את התוצרים
+    sampleArtifacts.forEach(artifact => {
+      sheet.appendRow(artifact);
+    });
+    
+    return { 
+      success: true, 
+      message: `נוספו ${sampleArtifacts.length} תוצרים לדוגמה בהצלחה!` 
+    };
+    
+  } catch (error) {
+    console.error('addSampleArtifacts error:', error);
+    return { success: false, message: error.message };
+  }
+}
+
 // =================================================================
 // פונקציות ביקורת
 // =================================================================
@@ -646,7 +747,7 @@ function debugArtifacts() {
   }
 }
 
-// פונקציה פשוטה ועמידה - בודק גם TRUE כמחרוזת
+// פונקציה פשוטה ועמידה - מחזירה הכל!
 function getArtifactsSimple() {
   try {
     const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
@@ -660,12 +761,8 @@ function getArtifactsSimple() {
     
     const result = [];
     for (let i = 1; i < data.length; i++) {
-      const isPublished = data[i][11];
-      const publishedCheck = String(isPublished).toUpperCase().trim();
-      
-      // בדיקה גמישה של isPublished
-      if (isPublished === true || publishedCheck === 'TRUE' || isPublished === 1) {
-        console.log('getArtifactsSimple: Adding row', i, 'Title:', data[i][3]);
+      // פשוט מחזיר הכל, ללא בדיקות מסובכות
+      if (data[i][0]) { // אם יש ID
         result.push({
           id: String(data[i][0] || 'ART_' + i),
           submissionTimestamp: data[i][1] || new Date().toISOString(),
