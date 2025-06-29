@@ -1,193 +1,1137 @@
 <!DOCTYPE html>
-<html>
+<html lang="he" dir="rtl">
 <head>
-  <base target="_top">
-  <!-- הוספת תלות ב-Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <!-- הוספת אייקונים של Bootstrap -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  
-  <?!= include('styles'); ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פלטפורמת ביקורת עמיתים</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --primary-color: #E6E6FA;
+            --secondary-color: #98FB98;
+            --accent-color: #87CEEB;
+            --text-color: #4A4A4A;
+            --bg-color: #F8F8FF;
+            --card-bg: #FFFFFF;
+            --shadow-light: rgba(255, 255, 255, 0.9);
+            --shadow-dark: rgba(0, 0, 0, 0.1);
+            --success-color: #90EE90;
+            --warning-color: #FFB6C1;
+            --danger-color: #FFA07A;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: linear-gradient(135deg, var(--bg-color) 0%, var(--primary-color) 100%);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .clay-button {
+            background: var(--card-bg);
+            border: none;
+            border-radius: 20px;
+            padding: 15px 30px;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 
+                8px 8px 16px var(--shadow-dark),
+                -8px -8px 16px var(--shadow-light);
+        }
+
+        .clay-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                12px 12px 24px var(--shadow-dark),
+                -12px -12px 24px var(--shadow-light);
+        }
+
+        .clay-button:active {
+            transform: translateY(1px);
+            box-shadow: 
+                4px 4px 8px var(--shadow-dark),
+                -4px -4px 8px var(--shadow-light);
+        }
+
+        .clay-button.primary {
+            background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+            color: white;
+        }
+
+        .clay-input {
+            background: var(--card-bg);
+            border: none;
+            border-radius: 16px;
+            padding: 15px 20px;
+            font-family: inherit;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 15px;
+            box-shadow: 
+                inset 4px 4px 8px var(--shadow-dark),
+                inset -4px -4px 8px var(--shadow-light);
+            transition: all 0.3s ease;
+        }
+
+        .clay-input:focus {
+            outline: none;
+            box-shadow: 
+                inset 6px 6px 12px var(--shadow-dark),
+                inset -6px -6px 12px var(--shadow-light);
+        }
+
+        .clay-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 
+                12px 12px 24px var(--shadow-dark),
+                -12px -12px 24px var(--shadow-light);
+            transition: all 0.3s ease;
+        }
+
+        .clay-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 
+                16px 16px 32px var(--shadow-dark),
+                -16px -16px 32px var(--shadow-light);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .search-container {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .artifact-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .artifact-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            border-radius: 16px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            color: white;
+        }
+
+        .artifact-info h3 {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        .artifact-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .tag {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 
+                20px 20px 40px var(--shadow-dark),
+                -20px -20px 40px var(--shadow-light);
+        }
+
+        .modal-header {
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .close {
+            color: #aaa;
+            float: left;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: var(--text-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .user-info {
+            background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+            color: white;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 16px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .alert-error {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .rating-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .rating-stars {
+            display: flex;
+            gap: 5px;
+        }
+
+        .star {
+            font-size: 1.5em;
+            color: #ddd;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .star.active {
+            color: #FFD700;
+        }
+
+        @media (max-width: 768px) {
+            .nav-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>פלטפורמת ביקורת עמיתים</h1>
+            <p>שתפו, למדו וביקרו יחד</p>
+        </div>
 
-  <!-- Main container -->
-  <div class="container-fluid p-0">
-    
-    <!-- Header -->
-    <header class="p-3 d-flex justify-content-between align-items-center">
-      <h1 class="h4 m-0">פלטפורמת ביקורת עמיתים</h1>
-      <div id="user-controls">
-        <!-- יוצג למשתמשים לא מחוברים -->
-        <div id="guest-view">
-          <button class="btn btn-outline-primary" onclick="showLoginScreen()">התחברות</button>
-          <button class="btn btn-primary" onclick="showRegisterScreen()">הרשמה</button>
-        </div>
-        <!-- יוצג למשתמשים מחוברים -->
-        <div id="user-view" class="d-none align-items-center">
-           <span id="welcome-message" class="me-3"></span>
-           <button class="btn btn-danger" onclick="logout()">התנתקות</button>
-        </div>
-      </div>
-    </header>
-
-    <!-- Login Screen -->
-    <div id="login-screen" class="d-none vh-100 d-flex justify-content-center align-items-center">
-        <div class="auth-form">
-            <h2>התחברות</h2>
-            <input type="text" id="login-username" class="form-control mb-2" placeholder="שם משתמש">
-            <input type="password" id="login-password" class="form-control mb-2" placeholder="סיסמה">
-            <button class="btn btn-primary w-100" onclick="handleLogin()">התחבר</button>
-            <p class="mt-2 text-center">אין לך חשבון? <a href="#" onclick="showRegisterScreen()">הירשם כאן</a></p>
-        </div>
-    </div>
-    
-    <!-- Registration Screen -->
-    <div id="register-screen" class="d-none vh-100 d-flex justify-content-center align-items-center">
-        <div class="auth-form">
-            <h2>הרשמה</h2>
-            <input type="text" id="register-username" class="form-control mb-2" placeholder="שם משתמש">
-            <input type="password" id="register-password" class="form-control mb-2" placeholder="סיסמה">
-            <input type="text" id="register-fullname" class="form-control mb-2" placeholder="שם מלא">
-            <input type="text" id="register-question" class="form-control mb-2" placeholder="שאלת אימות (לשחזור סיסמה)">
-            <input type="text" id="register-answer" class="form-control mb-2" placeholder="תשובה לשאלת האימות">
-            <button class="btn btn-primary w-100" onclick="handleRegister()">הירשם</button>
-            <p class="mt-2 text-center">יש לך כבר חשבון? <a href="#" onclick="showLoginScreen()">התחבר כאן</a></p>
-        </div>
-    </div>
-    
-    <!-- App Content (Initially hidden) -->
-    <div id="app-content" class="d-none">
-      <ul class="nav nav-tabs" id="myTab" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="gallery-tab" data-bs-toggle="tab" data-bs-target="#gallery" type="button" role="tab" aria-controls="gallery" aria-selected="true">גלריה</button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="submissions-tab" data-bs-toggle="tab" data-bs-target="#submissions" type="button" role="tab" aria-controls="submissions" aria-selected="false">ההגשות שלי</button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab" aria-controls="reviews" aria-selected="false">הביקורות שלי</button>
-        </li>
-      </ul>
-      <div class="tab-content" id="myTabContent">
-        <div class="tab-pane fade show active" id="gallery" role="tabpanel" aria-labelledby="gallery-tab">
-           <div id="gallery-content" class="row p-3"></div>
-        </div>
-        <div class="tab-pane fade" id="submissions" role="tabpanel" aria-labelledby="submissions-tab">
-          <div class="p-3">
-            <button id="add-submission-btn" class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#submissionModal"><i class="bi bi-plus-circle"></i> הוסף הגשה חדשה</button>
-            <div id="my-submissions-content" class="row"></div>
-          </div>
-        </div>
-        <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
-           <div id="my-reviews-content" class="p-3"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Submission Modal -->
-    <div class="modal fade" id="submissionModal" tabindex="-1" aria-labelledby="submissionModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="submissionModalLabel">הגשת תוצר חדש</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="submissionForm">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label for="title" class="form-label">כותרת התוצר</label>
-                  <input type="text" id="title" class="form-control" required>
-                </div>
-                <div class="col-md-6">
-                  <label for="toolUsed" class="form-label">באיזה כלי השתמשת?</label>
-                  <input type="text" id="toolUsed" class="form-control" required placeholder="למשל: Canva, Genially">
-                </div>
-                <div class="col-12">
-                  <label for="instructions" class="form-label">הוראות שימוש / תיאור קצר</label>
-                  <textarea id="instructions" class="form-control" rows="3" required></textarea>
-                </div>
-                <div class="col-md-6">
-                  <label for="targetAudience" class="form-label">קהל יעד</label>
-                  <input type="text" id="targetAudience" class="form-control" placeholder="למשל: כיתות א-ב, מורים">
-                </div>
-                <div class="col-md-6">
-                  <label for="tags" class="form-label">תגיות (מופרדות בפסיק)</label>
-                  <input type="text" id="tags" class="form-control" placeholder="למשל: שפה, חשבון, חגים">
-                </div>
-                <div class="col-md-6">
-                    <label for="artifactType" class="form-label">סוג התוצר</label>
-                    <select id="artifactType" class="form-select">
-                      <option value="link" selected>קישור (ל-Canva, Genially וכו')</option>
-                      <option value="image">קובץ תמונה (jpg, png, gif)</option>
-                      <option value="pdf">קובץ PDF</option>
-                    </select>
-                </div>
-                <div class="col-md-6" id="link-group">
-                    <label for="artifactLink" class="form-label">קישור לתוצר</label>
-                    <input type="url" id="artifactLink" class="form-control" placeholder="https://...">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">תמונה מייצגת (חובה)</label>
-                   <div id="paste-area-image" class="paste-area">
-                       <p id="paste-area-text">גרור תמונה לכאן, לחץ לבחירה, או הדבק (Ctrl+V)</p>
-                       <input type="file" id="previewImageInput" class="d-none" accept="image/*">
-                       <img id="image-preview" style="display: none;" alt="תצוגה מקדימה">
-                   </div>
-                </div>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
-            <button type="submit" form="submissionForm" class="btn btn-primary">הגשת תוצר</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Review Modal -->
-    <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="reviewModalLabel">מתן ביקורת</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p>כאן יוצג התוצר לביקורת, ולאחר מכן טופס למילוי משוב.</p>
-            <!-- Review form will be built out here -->
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">סגירה</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Loader -->
-    <div id="loader" class="d-none">
-        <div class="spinner"></div>
-    </div>
-
-    <!-- Toast container -->
-    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
-        <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <strong class="me-auto">הודעה</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        <!-- Navigation -->
+        <div class="nav-bar">
+            <div class="search-container">
+                <input type="text" id="searchInput" class="clay-input search-input" placeholder="חיפוש תוצרים...">
             </div>
-            <div class="toast-body" id="toast-body">
+            <div id="userActions">
+                <button class="clay-button primary" onclick="showLogin()">התחברות</button>
+                <button class="clay-button" onclick="showRegister()">הרשמה</button>
+            </div>
+            <div id="loggedInActions" class="hidden">
+                <button class="clay-button" onclick="showUpload()">העלאת תוצר</button>
+                <button class="clay-button" onclick="showReviews()">ביקורות</button>
+                <button class="clay-button" onclick="showProfile()">פרופיל</button>
+                <button class="clay-button" onclick="logout()">יציאה</button>
+            </div>
+        </div>
+
+        <!-- User Info (when logged in) -->
+        <div id="userInfo" class="user-info hidden">
+            <h3 id="welcomeMessage"></h3>
+            <div class="stats-grid">
+                <div class="stat-card clay-card">
+                    <div class="stat-number" id="userSubmissions">0</div>
+                    <div>תוצרים</div>
+                </div>
+                <div class="stat-card clay-card">
+                    <div class="stat-number" id="userReviews">0</div>
+                    <div>ביקורות</div>
+                </div>
+                <div class="stat-card clay-card">
+                    <div class="stat-number" id="eligibilityStatus">❌</div>
+                    <div>זכאות</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gallery -->
+        <div id="galleryContainer">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h2>גלריית התוצרים</h2>
+                <div>
+                    <button class="clay-button" onclick="testConnection()">בדיקת חיבור</button>
+                    <button class="clay-button" onclick="debugArtifactsData()">דיבוג תוצרים</button>
+                    <button class="clay-button" onclick="loadGallery()">רענון</button>
+                </div>
+            </div>
+            <div id="gallery" class="gallery">
+                <!-- תוצרים יטענו כאן -->
             </div>
         </div>
     </div>
-  </div> <!-- end of container-fluid -->
 
-  <!-- הוספת תלות ב-Bootstrap JS Bundle (כולל Popper) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-  
-  <?!= include('javascript'); ?>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('loginModal')">&times;</span>
+                <h2>התחברות</h2>
+            </div>
+            <div class="modal-body">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>שם משתמש:</label>
+                        <input type="text" id="loginUsername" class="clay-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>סיסמה:</label>
+                        <input type="password" id="loginPassword" class="clay-input" required>
+                    </div>
+                    <button type="submit" class="clay-button primary" style="width: 100%;">התחבר</button>
+                </form>
+            </div>
+        </div>
+    </div>
 
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('registerModal')">&times;</span>
+                <h2>הרשמה</h2>
+            </div>
+            <div class="modal-body">
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label>שם משתמש:</label>
+                        <input type="text" id="regUsername" class="clay-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>שם מלא:</label>
+                        <input type="text" id="regFullName" class="clay-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>סיסמה:</label>
+                        <input type="password" id="regPassword" class="clay-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>שאלת אבטחה:</label>
+                        <select id="regSecurityQuestion" class="clay-input" required>
+                            <option value="">בחר שאלה...</option>
+                            <option value="מה השם של חיית המחמד הראשונה שלך?">מה השם של חיית המחמד הראשונה שלך?</option>
+                            <option value="באיזה עיר נולדת?">באיזה עיר נולדת?</option>
+                            <option value="מה השם של בית הספר היסודי שלך?">מה השם של בית הספר היסודי שלך?</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>תשובה לשאלת אבטחה:</label>
+                        <input type="text" id="regSecurityAnswer" class="clay-input" required>
+                    </div>
+                    <button type="submit" class="clay-button primary" style="width: 100%;">הירשם</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('uploadModal')">&times;</span>
+                <h2>העלאת תוצר</h2>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm">
+                    <div class="form-group">
+                        <label>כותרת:</label>
+                        <input type="text" id="uploadTitle" class="clay-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>הוראות שימוש:</label>
+                        <textarea id="uploadInstructions" class="clay-input" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>קהל יעד:</label>
+                        <input type="text" id="uploadAudience" class="clay-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>תגיות (מופרד בפסיקים):</label>
+                        <input type="text" id="uploadTags" class="clay-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>כלי שמש:</label>
+                        <input type="text" id="uploadTool" class="clay-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>סוג תוצר:</label>
+                        <select id="uploadType" class="clay-input" required>
+                            <option value="">בחר סוג...</option>
+                            <option value="תמונה">תמונה</option>
+                            <option value="PDF">PDF</option>
+                            <option value="קישור Canva">קישור Canva</option>
+                            <option value="מסמך HTML">מסמך HTML</option>
+                            <option value="וידאו">וידאו</option>
+                            <option value="אחר">אחר</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>קישור לתוצר:</label>
+                        <input type="url" id="uploadLink" class="clay-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>קישור לתמונת תצוגה מקדימה (אופציונלי):</label>
+                        <input type="url" id="uploadPreview" class="clay-input">
+                    </div>
+                    <button type="submit" class="clay-button primary" style="width: 100%;">העלה תוצר</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviews Modal -->
+    <div id="reviewsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('reviewsModal')">&times;</span>
+                <h2>ביקורות ממתינות</h2>
+            </div>
+            <div class="modal-body">
+                <div id="reviewsList">
+                    <!-- ביקורות יטענו כאן -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Form Modal -->
+    <div id="reviewFormModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('reviewFormModal')">&times;</span>
+                <h2>ביקורת תוצר</h2>
+            </div>
+            <div class="modal-body">
+                <div id="reviewArtifactInfo" class="clay-card" style="margin-bottom: 20px;">
+                    <!-- פרטי התוצר יטענו כאן -->
+                </div>
+                <form id="reviewForm">
+                    <input type="hidden" id="reviewAssignmentId">
+                    <input type="hidden" id="reviewArtifactId">
+                    
+                    <div class="form-group">
+                        <label>ציון עיצוב (1-5):</label>
+                        <div class="rating-container">
+                            <div class="rating-stars" data-rating="design">
+                                <span class="star" data-value="1">★</span>
+                                <span class="star" data-value="2">★</span>
+                                <span class="star" data-value="3">★</span>
+                                <span class="star" data-value="4">★</span>
+                                <span class="star" data-value="5">★</span>
+                            </div>
+                            <span id="designScore">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>ציון טכני (1-5):</label>
+                        <div class="rating-container">
+                            <div class="rating-stars" data-rating="technical">
+                                <span class="star" data-value="1">★</span>
+                                <span class="star" data-value="2">★</span>
+                                <span class="star" data-value="3">★</span>
+                                <span class="star" data-value="4">★</span>
+                                <span class="star" data-value="5">★</span>
+                            </div>
+                            <span id="technicalScore">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>ציון פדגוגי (1-5):</label>
+                        <div class="rating-container">
+                            <div class="rating-stars" data-rating="pedagogy">
+                                <span class="star" data-value="1">★</span>
+                                <span class="star" data-value="2">★</span>
+                                <span class="star" data-value="3">★</span>
+                                <span class="star" data-value="4">★</span>
+                                <span class="star" data-value="5">★</span>
+                            </div>
+                            <span id="pedagogyScore">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>הערות (אופציונלי):</label>
+                        <textarea id="reviewComments" class="clay-input" rows="4" placeholder="הערות בונות..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="clay-button primary" style="width: 100%;">שלח ביקורת</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // משתנים גלובליים
+        let currentUser = null;
+        let allArtifacts = [];
+        let currentReviewData = {};
+
+        // פונקציות התחלתיות
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGallery();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // חיפוש
+            document.getElementById('searchInput').addEventListener('input', function() {
+                searchArtifacts(this.value);
+            });
+
+            // טפסים
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            document.getElementById('uploadForm').addEventListener('submit', handleUpload);
+            document.getElementById('reviewForm').addEventListener('submit', handleReviewSubmit);
+
+            // דירוג כוכבים
+            setupRatingStars();
+        }
+
+        function setupRatingStars() {
+            document.querySelectorAll('.rating-stars').forEach(container => {
+                const stars = container.querySelectorAll('.star');
+                const ratingType = container.getAttribute('data-rating');
+                
+                stars.forEach(star => {
+                    star.addEventListener('click', function() {
+                        const value = parseInt(this.getAttribute('data-value'));
+                        setRating(ratingType, value, container);
+                    });
+                    
+                    star.addEventListener('mouseover', function() {
+                        const value = parseInt(this.getAttribute('data-value'));
+                        highlightStars(container, value);
+                    });
+                });
+                
+                container.addEventListener('mouseleave', function() {
+                    const currentRating = getCurrentRating(ratingType);
+                    highlightStars(container, currentRating);
+                });
+            });
+        }
+
+        function setRating(type, value, container) {
+            document.getElementById(type + 'Score').textContent = value;
+            highlightStars(container, value);
+        }
+
+        function highlightStars(container, count) {
+            const stars = container.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                if (index < count) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+
+        function getCurrentRating(type) {
+            return parseInt(document.getElementById(type + 'Score').textContent) || 0;
+        }
+
+        // פונקציות מודלים
+        function showLogin() {
+            document.getElementById('loginModal').style.display = 'block';
+        }
+
+        function showRegister() {
+            document.getElementById('registerModal').style.display = 'block';
+        }
+
+        function showUpload() {
+            if (!currentUser) {
+                alert('יש להתחבר תחילה');
+                return;
+            }
+            document.getElementById('uploadModal').style.display = 'block';
+        }
+
+        function showReviews() {
+            if (!currentUser) {
+                alert('יש להתחבר תחילה');
+                return;
+            }
+            loadAssignedReviews();
+            document.getElementById('reviewsModal').style.display = 'block';
+        }
+
+        function showProfile() {
+            if (!currentUser) {
+                alert('יש להתחבר תחילה');
+                return;
+            }
+            // יישום עמוד פרופיל
+            alert('עמוד פרופיל בפיתוח');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // פונקציות אימות
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const result = await google.script.run
+                    .withSuccessHandler(loginSuccess)
+                    .withFailureHandler(loginError)
+                    .loginUser(username, password);
+            } catch (error) {
+                showAlert('שגיאה בהתחברות', 'error');
+            }
+        }
+
+        function loginSuccess(result) {
+            if (result.success) {
+                currentUser = result.user;
+                updateUI();
+                closeModal('loginModal');
+                showAlert('התחברת בהצלחה!', 'success');
+                document.getElementById('loginForm').reset();
+            } else {
+                showAlert(result.message, 'error');
+            }
+        }
+
+        function loginError(error) {
+            showAlert('שגיאה בהתחברות: ' + error.message, 'error');
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            
+            const userData = {
+                username: document.getElementById('regUsername').value,
+                fullName: document.getElementById('regFullName').value,
+                password: document.getElementById('regPassword').value,
+                securityQuestion: document.getElementById('regSecurityQuestion').value,
+                securityAnswer: document.getElementById('regSecurityAnswer').value
+            };
+            
+            try {
+                const result = await google.script.run
+                    .withSuccessHandler(registerSuccess)
+                    .withFailureHandler(registerError)
+                    .registerUser(userData);
+            } catch (error) {
+                showAlert('שגיאה בהרשמה', 'error');
+            }
+        }
+
+        function registerSuccess(result) {
+            if (result.success) {
+                closeModal('registerModal');
+                showAlert(result.message, 'success');
+                document.getElementById('registerForm').reset();
+                showLogin();
+            } else {
+                showAlert(result.message, 'error');
+            }
+        }
+
+        function registerError(error) {
+            showAlert('שגיאה בהרשמה: ' + error.message, 'error');
+        }
+
+        function logout() {
+            currentUser = null;
+            updateUI();
+            showAlert('התנתקת בהצלחה', 'success');
+        }
+
+        function updateUI() {
+            if (currentUser) {
+                document.getElementById('userActions').classList.add('hidden');
+                document.getElementById('loggedInActions').classList.remove('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+                
+                document.getElementById('welcomeMessage').textContent = `שלום ${currentUser.fullName}`;
+                document.getElementById('userSubmissions').textContent = currentUser.submissionsCount;
+                document.getElementById('userReviews').textContent = currentUser.reviewsCompletedCount;
+                document.getElementById('eligibilityStatus').textContent = currentUser.isEligible ? '✅' : '❌';
+            } else {
+                document.getElementById('userActions').classList.remove('hidden');
+                document.getElementById('loggedInActions').classList.add('hidden');
+                document.getElementById('userInfo').classList.add('hidden');
+            }
+        }
+
+        // פונקציות גלריה
+        async function loadGallery() {
+            try {
+                // הוספת אינדיקטור טעינה
+                const gallery = document.getElementById('gallery');
+                gallery.innerHTML = '<div class="clay-card"><p>טוען תוצרים...</p></div>';
+                
+                google.script.run
+                    .withSuccessHandler(displayArtifacts)
+                    .withFailureHandler(function(error) {
+                        console.error('Error loading gallery:', error);
+                        showAlert('שגיאה בטעינת הגלריה: ' + error.message, 'error');
+                        gallery.innerHTML = '<div class="clay-card"><p>שגיאה בטעינת התוצרים</p></div>';
+                    })
+                    .getAllArtifacts();
+            } catch (error) {
+                console.error('Gallery load error:', error);
+                showAlert('שגיאה בטעינת הגלריה', 'error');
+            }
+        }
+
+        function displayArtifacts(artifacts) {
+            console.log('Received artifacts:', artifacts);
+            allArtifacts = artifacts || [];
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+            
+            if (!artifacts || artifacts.length === 0) {
+                gallery.innerHTML = '<div class="clay-card"><p>אין תוצרים להצגה. ודא שהגליון מכיל נתונים עם isPublished = TRUE</p></div>';
+                return;
+            }
+            
+            artifacts.forEach((artifact, index) => {
+                try {
+                    const card = createArtifactCard(artifact);
+                    gallery.appendChild(card);
+                } catch (error) {
+                    console.error('Error creating artifact card for index', index, ':', error);
+                    console.error('Artifact data:', artifact);
+                }
+            });
+            
+            // הוספת הודעה על מספר התוצרים
+            if (artifacts.length > 0) {
+                console.log('Successfully displayed', artifacts.length, 'artifacts');
+            }
+        }
+
+        function createArtifactCard(artifact) {
+            const card = document.createElement('div');
+            card.className = 'clay-card artifact-card';
+            
+            const imageUrl = artifact.previewImageUrl || '#';
+            const tags = artifact.tags.split(',').map(tag => tag.trim());
+            
+            card.innerHTML = `
+                <div class="artifact-image">
+                    ${artifact.previewImageUrl ? 
+                        `<img src="${artifact.previewImageUrl}" alt="${artifact.title}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;">` :
+                        getArtifactIcon(artifact.artifactType)
+                    }
+                </div>
+                <div class="artifact-info">
+                    <h3>${artifact.title}</h3>
+                    <p><strong>יוצר:</strong> ${artifact.submitterUsername}</p>
+                    <p><strong>קהל יעד:</strong> ${artifact.targetAudience}</p>
+                    <p><strong>כלי:</strong> ${artifact.toolUsed}</p>
+                    <div class="artifact-tags">
+                        ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    <button class="clay-button primary" onclick="openArtifact('${artifact.artifactLink}')">צפה בתוצר</button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function getArtifactIcon(type) {
+            const icons = {
+                'תמונה': '🖼️',
+                'PDF': '📄',
+                'קישור Canva': '🎨',
+                'מסמך HTML': '💻',
+                'וידאו': '🎥',
+                'אחר': '📋'
+            };
+            return icons[type] || '📋';
+        }
+
+        function openArtifact(link) {
+            window.open(link, '_blank');
+        }
+
+        async function searchArtifacts(searchTerm) {
+            try {
+                google.script.run
+                    .withSuccessHandler(displayArtifacts)
+                    .withFailureHandler(() => showAlert('שגיאה בחיפוש', 'error'))
+                    .searchArtifacts(searchTerm);
+            } catch (error) {
+                showAlert('שגיאה בחיפוש', 'error');
+            }
+        }
+
+        // פונקציות העלאת תוצרים
+        async function handleUpload(e) {
+            e.preventDefault();
+            
+            const artifactData = {
+                submitterUsername: currentUser.username,
+                title: document.getElementById('uploadTitle').value,
+                instructions: document.getElementById('uploadInstructions').value,
+                targetAudience: document.getElementById('uploadAudience').value,
+                tags: document.getElementById('uploadTags').value,
+                toolUsed: document.getElementById('uploadTool').value,
+                artifactType: document.getElementById('uploadType').value,
+                artifactLink: document.getElementById('uploadLink').value,
+                previewImageUrl: document.getElementById('uploadPreview').value
+            };
+            
+            try {
+                google.script.run
+                    .withSuccessHandler(uploadSuccess)
+                    .withFailureHandler(uploadError)
+                    .uploadArtifact(artifactData);
+            } catch (error) {
+                showAlert('שגיאה בהעלאת התוצר', 'error');
+            }
+        }
+
+        function uploadSuccess(result) {
+            if (result.success) {
+                closeModal('uploadModal');
+                showAlert(result.message, 'success');
+                document.getElementById('uploadForm').reset();
+                loadGallery();
+                // עדכון נתוני המשתמש
+                if (currentUser) {
+                    currentUser.submissionsCount++;
+                    updateUI();
+                }
+            } else {
+                showAlert(result.message, 'error');
+            }
+        }
+
+        function uploadError(error) {
+            showAlert('שגיאה בהעלאת התוצר: ' + error.message, 'error');
+        }
+
+        // פונקציות ביקורת
+        async function loadAssignedReviews() {
+            try {
+                google.script.run
+                    .withSuccessHandler(displayAssignedReviews)
+                    .withFailureHandler(() => showAlert('שגיאה בטעינת הביקורות', 'error'))
+                    .getAssignedArtifacts(currentUser.username);
+            } catch (error) {
+                showAlert('שגיאה בטעינת הביקורות', 'error');
+            }
+        }
+
+        function displayAssignedReviews(artifacts) {
+            const container = document.getElementById('reviewsList');
+            container.innerHTML = '';
+            
+            if (artifacts.length === 0) {
+                container.innerHTML = '<div class="clay-card"><p>אין ביקורות ממתינות</p></div>';
+                return;
+            }
+            
+            artifacts.forEach(artifact => {
+                const card = document.createElement('div');
+                card.className = 'clay-card';
+                card.innerHTML = `
+                    <h3>${artifact.title}</h3>
+                    <p><strong>קהל יעד:</strong> ${artifact.targetAudience}</p>
+                    <p><strong>כלי:</strong> ${artifact.toolUsed}</p>
+                    <div class="artifact-tags">
+                        ${artifact.tags.split(',').map(tag => `<span class="tag">${tag.trim()}</span>`).join('')}
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="clay-button" onclick="openArtifact('${artifact.artifactLink}')">צפה בתוצר</button>
+                        <button class="clay-button primary" onclick="startReview('${artifact.assignmentId}', '${artifact.artifactId}', ${JSON.stringify(artifact).replace(/"/g, '&quot;')})">התחל ביקורת</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function startReview(assignmentId, artifactId, artifactData) {
+            currentReviewData = JSON.parse(artifactData.replace(/&quot;/g, '"'));
+            
+            document.getElementById('reviewAssignmentId').value = assignmentId;
+            document.getElementById('reviewArtifactId').value = artifactId;
+            
+            // הצגת פרטי התוצר
+            document.getElementById('reviewArtifactInfo').innerHTML = `
+                <h3>${currentReviewData.title}</h3>
+                <p><strong>הוראות שימוש:</strong> ${currentReviewData.instructions}</p>
+                <p><strong>קהל יעד:</strong> ${currentReviewData.targetAudience}</p>
+                <p><strong>כלי:</strong> ${currentReviewData.toolUsed}</p>
+                <button class="clay-button" onclick="openArtifact('${currentReviewData.artifactLink}')">צפה בתוצר</button>
+            `;
+            
+            // איפוס הציונים
+            document.getElementById('designScore').textContent = '0';
+            document.getElementById('technicalScore').textContent = '0';
+            document.getElementById('pedagogyScore').textContent = '0';
+            
+            // איפוס הכוכבים
+            document.querySelectorAll('.rating-stars').forEach(container => {
+                highlightStars(container, 0);
+            });
+            
+            closeModal('reviewsModal');
+            document.getElementById('reviewFormModal').style.display = 'block';
+        }
+
+        async function handleReviewSubmit(e) {
+            e.preventDefault();
+            
+            const reviewData = {
+                assignmentId: document.getElementById('reviewAssignmentId').value,
+                artifactId: document.getElementById('reviewArtifactId').value,
+                reviewerUsername: currentUser.username,
+                scoreDesign: getCurrentRating('design'),
+                scoreTechnical: getCurrentRating('technical'),
+                scorePedagogy: getCurrentRating('pedagogy'),
+                comments: document.getElementById('reviewComments').value
+            };
+            
+            // בדיקה שכל הציונים נתונים
+            if (reviewData.scoreDesign === 0 || reviewData.scoreTechnical === 0 || reviewData.scorePedagogy === 0) {
+                showAlert('יש לתת ציון לכל הקטגוריות', 'error');
+                return;
+            }
+            
+            try {
+                google.script.run
+                    .withSuccessHandler(reviewSubmitSuccess)
+                    .withFailureHandler(reviewSubmitError)
+                    .submitReview(reviewData);
+            } catch (error) {
+                showAlert('שגיאה בשליחת הביקורת', 'error');
+            }
+        }
+
+        function reviewSubmitSuccess(result) {
+            if (result.success) {
+                closeModal('reviewFormModal');
+                showAlert(result.message, 'success');
+                document.getElementById('reviewForm').reset();
+                // עדכון נתוני המשתמש
+                if (currentUser) {
+                    currentUser.reviewsCompletedCount++;
+                    updateUI();
+                }
+                loadAssignedReviews();
+            } else {
+                showAlert(result.message, 'error');
+            }
+        }
+
+        function reviewSubmitError(error) {
+            showAlert('שגיאה בשליחת הביקורת: ' + error.message, 'error');
+        }
+
+        // פונקציות דיבוג
+        function testConnection() {
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    console.log('Test result:', result);
+                    if (result.success) {
+                        showAlert(`חיבור תקין! נמצאו ${result.rowCount} שורות בגליון`, 'success');
+                    } else {
+                        showAlert('שגיאה בחיבור: ' + result.message, 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Test connection error:', error);
+                    showAlert('שגיאה בבדיקת החיבור: ' + error.message, 'error');
+                })
+                .testSheetConnection();
+        }
+
+        function debugArtifactsData() {
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    console.log('Debug artifacts result:', result);
+                    if (result.error) {
+                        showAlert('שגיאה בדיבוג: ' + result.error, 'error');
+                    } else {
+                        showAlert(`דיבוג: ${result.totalRows} שורות, בדוק את הקונסולה לפרטים`, 'success');
+                        console.table(result.artifacts);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Debug artifacts error:', error);
+                    showAlert('שגיאה בדיבוג התוצרים: ' + error.message, 'error');
+                })
+                .debugArtifacts();
+        }
+
+        // פונקציות עזר
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // סגירת מודלים בלחיצה מחוץ לתוכן
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+    </script>
 </body>
 </html> 

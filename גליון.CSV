@@ -1,0 +1,16 @@
+
+**גיליון `Users`**
+`username` | `fullName` | `password` | `securityQuestion` | `securityAnswer` | `submissionsCount` | `reviewsCompletedCount` | `isEligible`
+---
+
+**גיליון `Artifacts`**
+`id` | `submissionTimestamp` | `submitterUsername` | `title` | `instructions` | `targetAudience` | `tags` | `toolUsed` | `artifactType` | `artifactLink` | `previewImageUrl` | `isPublished` | `likes`
+---
+
+**גיליון `Reviews` **
+`id` | `timestamp` | `artifactId` | `reviewerUsername` | `scoreDesign` | `scoreTechnical` | `scorePedagogy` | `comments`
+---|
+
+**גיליון `Assignments`**
+`id` | `artifactId` | `assignedUsername` | `status` | `dateAssigned` | `dateCompleted`
+---|-
