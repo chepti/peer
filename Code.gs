@@ -216,58 +216,62 @@ function assignRandomReviews(username) {
   }
 }
 
-// קבלת כל התוצרים
+// קבלת כל התוצרים - גרסה מפושטת ויציבה
 function getAllArtifacts() {
   try {
     const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
-    const data = sheet.getDataRange().getValues();
+    if (!sheet) {
+      console.error('getAllArtifacts - Sheet not found');
+      return [];
+    }
     
-    console.log('getAllArtifacts - Total rows in Artifacts sheet:', data.length);
+    const data = sheet.getDataRange().getValues();
+    if (!data || data.length <= 1) {
+      console.error('getAllArtifacts - No data or only headers');
+      return [];
+    }
     
     const artifacts = [];
+    
+    // מעבר על כל השורות מלבד הכותרות
     for (let i = 1; i < data.length; i++) {
-      // בדיקה שהשורה לא ריקה
-      if (data[i][0] && data[i][3]) { // יש ID ויש title
-        const isPublished = data[i][11];
-        console.log('getAllArtifacts - Row', i, '- ID:', data[i][0], 'Title:', data[i][3], 'isPublished:', isPublished, 'Type:', typeof isPublished);
+      try {
+        const row = data[i];
         
-        // בדיקה גמישה מאוד של isPublished - כולל בדיקה של המחרוזת
-        const publishedCheck = String(isPublished).toUpperCase().trim();
-        const shouldInclude = isPublished === true || publishedCheck === 'TRUE' || isPublished === 1 || publishedCheck === '1';
+        // וידוא שיש נתונים בסיסיים
+        if (!row[0] || !row[3]) continue; // אין ID או title
         
-        console.log('getAllArtifacts - Will include:', shouldInclude);
+        const isPublished = row[11];
         
-        if (shouldInclude) {
-          const artifact = {
-            id: data[i][0] || '',
-            submissionTimestamp: data[i][1] || '',
-            submitterUsername: data[i][2] || '',
-            title: data[i][3] || '',
-            instructions: data[i][4] || '',
-            targetAudience: data[i][5] || '',
-            tags: data[i][6] || '',
-            toolUsed: data[i][7] || '',
-            artifactType: data[i][8] || '',
-            artifactLink: data[i][9] || '',
-            previewImageUrl: data[i][10] || '',
-            likes: data[i][12] || 0
-          };
-          
-          console.log('getAllArtifacts - Adding artifact:', artifact);
-          artifacts.push(artifact);
+        // בדיקה פשוטה של isPublished
+        if (isPublished === true || String(isPublished).toUpperCase() === 'TRUE') {
+          artifacts.push({
+            id: String(row[0] || ''),
+            submissionTimestamp: row[1] || '',
+            submitterUsername: String(row[2] || ''),
+            title: String(row[3] || ''),
+            instructions: String(row[4] || ''),
+            targetAudience: String(row[5] || ''),
+            tags: String(row[6] || ''),
+            toolUsed: String(row[7] || ''),
+            artifactType: String(row[8] || ''),
+            artifactLink: String(row[9] || ''),
+            previewImageUrl: String(row[10] || ''),
+            likes: Number(row[12]) || 0
+          });
         }
+      } catch (rowError) {
+        console.error('getAllArtifacts - Error processing row', i, ':', rowError);
+        continue; // ממשיך לשורה הבאה
       }
     }
     
-    console.log('getAllArtifacts - Found', artifacts.length, 'published artifacts');
-    console.log('getAllArtifacts - Final artifacts array:', artifacts);
+    // החזרת התוצאות - החדשים ראשונים
+    return artifacts.reverse();
     
-    const finalResult = artifacts.reverse(); // החדשים ראשונים
-    console.log('getAllArtifacts - Returning:', finalResult);
-    return finalResult;
   } catch (error) {
-    console.error('Error in getAllArtifacts:', error);
-    return [];
+    console.error('getAllArtifacts - Critical error:', error);
+    return []; // מחזיר מערך ריק במקום null
   }
 }
 
@@ -582,4 +586,28 @@ function debugArtifacts() {
   } catch (error) {
     return { error: error.message };
   }
+}
+
+// פונקציה פשוטה מאוד - כתחליף זמני
+function getArtifactsSimple() {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+  const data = sheet.getDataRange().getValues();
+  
+  const result = [];
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][11] === true) {
+      result.push({
+        title: data[i][3],
+        submitterUsername: data[i][2],
+        artifactType: data[i][8] || 'אחר',
+        tags: data[i][6] || '',
+        targetAudience: data[i][5] || '',
+        toolUsed: data[i][7] || '',
+        artifactLink: data[i][9] || '#',
+        previewImageUrl: data[i][10] || ''
+      });
+    }
+  }
+  
+  return result;
 } 

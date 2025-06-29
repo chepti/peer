@@ -257,11 +257,20 @@
 
         .user-info {
             background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
-            color: white;
+            color: var(--text-color);
             padding: 20px;
             border-radius: 16px;
             margin-bottom: 20px;
             text-align: center;
+            box-shadow: 
+                8px 8px 16px var(--shadow-dark),
+                -8px -8px 16px var(--shadow-light);
+        }
+
+        .user-info h3 {
+            color: var(--text-color);
+            font-weight: 600;
+            margin-bottom: 15px;
         }
 
         .stats-grid {
@@ -394,6 +403,7 @@
                     <button class="clay-button" onclick="testConnection()">בדיקת חיבור</button>
                     <button class="clay-button" onclick="debugArtifactsData()">דיבוג תוצרים</button>
                     <button class="clay-button" onclick="testGetAllArtifacts()">בדיקת getAllArtifacts</button>
+                    <button class="clay-button" onclick="testSimpleFunction()">בדיקה פשוטה</button>
                     <button class="clay-button" onclick="loadGallery()">רענון</button>
                 </div>
             </div>
@@ -1196,6 +1206,33 @@
                     showAlert('שגיאה בבדיקת getAllArtifacts: ' + error.message, 'error');
                 })
                 .getAllArtifacts();
+        }
+
+        function testSimpleFunction() {
+            console.log('=== Testing getArtifactsSimple ===');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    console.log('=== getArtifactsSimple result ===');
+                    console.log('Type:', typeof result);
+                    console.log('Is array:', Array.isArray(result));
+                    console.log('Length:', result ? result.length : 'undefined');
+                    console.log('Full result:', result);
+                    
+                    if (result && Array.isArray(result) && result.length > 0) {
+                        showAlert(`הפונקציה הפשוטה החזירה ${result.length} תוצרים!`, 'success');
+                        console.table(result);
+                        
+                        // נסה להציג את התוצרים
+                        displayArtifacts(result);
+                    } else {
+                        showAlert('גם הפונקציה הפשוטה לא החזירה תוצרים', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('getArtifactsSimple test error:', error);
+                    showAlert('שגיאה בפונקציה הפשוטה: ' + error.message, 'error');
+                })
+                .getArtifactsSimple();
         }
 
         // פונקציות עזר
