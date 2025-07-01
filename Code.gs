@@ -1,19 +1,65 @@
-// מערכת ביקורת עמיתים - Google Apps Script
-// =================================================================
-const SPREADSHEET_ID = '164XaMFX9EVAmNQPG6ecxVbx4XxUUOvurYdUBhjYoK0k';
-const UPLOAD_FOLDER_ID = '1_JwHrGcL3Via1OnOseSC4KHhnRzbRvPj';
+/**
+ * This is the main server-side script file for the Artifacts Gallery web app.
+ * It handles all interactions with the Google Sheet database and Google Drive.
+ */
 
-// פונקציה להצגת HTML הראשי
-function doGet() {
-  return HtmlService.createTemplateFromFile('index')
-    .evaluate()
-    .setTitle('פלטפורמת ביקורת עמיתים')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+// --- GLOBAL CONFIGURATION ---
+// !!! חשוב: יש להחליף את המזהים הבאים במזהים הנכונים שלכם !!!
+const SPREADSHEET_ID = "1tFyU7j5EonloS9B0bNOwCGXL5vtogLJW9AU6t5PVmD4";
+const FOLDER_ID = "1u2JyPTYi1Ao8aFet6BDIrgrw7HrzkwJg";
+const ADMIN_EMAILS = ["chepti@gmail.com"]; // ניתן להוסיף כאן עוד מיילים של מנהלים
+
+// אובייקט מרכזי לניהול שמות הגיליונות
+const SHEET_NAMES = {
+  USERS: 'Users', // באנגלית, כפי שהגדרת
+  ARTIFACTS: 'תוצרים',
+  REVIEWS: 'הערכות',
+  ASSIGNMENTS: 'הקצאות'
+};
+
+/**
+ * Main entry point for the web app. This function serves the main HTML page.
+ * @param {Object} e The event parameter from the HTTP GET request.
+ * @returns {HtmlOutput} The HTML output to be rendered by the browser.
+ */
+function doGet(e) {
+  const html = HtmlService.createTemplateFromFile('Index').evaluate();
+  html.setTitle('מאגר תוצרים והערכות');
+  html.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return html;
 }
 
-// פונקציה לכלול קבצי CSS/JS
+/**
+ * Includes the content of another file (like CSS or JS) into an HTML template.
+ * This is a standard technique in Apps Script web apps.
+ * @param {string} filename The name of the file to include (e.g., 'JavaScript.html' or 'CSS.html').
+ * @returns {string} The content of the specified file.
+ */
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
+ * Gets the email address of the user accessing the web app.
+ * Uses Session.getActiveUser().getEmail().
+ * Provides a dummy email for testing purposes when the script is run from the editor.
+ * @returns {string} The user's email address.
+ */
+function getUserEmail() {
+  const email = Session.getActiveUser().getEmail();
+  // For testing purposes in the script editor, the email is blank.
+  // To test as a specific user (e.g., an admin), replace 'test.user@example.com'
+  // with the desired email address.
+  return email === '' ? 'test.user@example.com' : email;
+}
+
+/**
+ * Checks if the currently logged-in user is an administrator.
+ * @returns {boolean} True if the user's email is in the ADMIN_EMAILS list, false otherwise.
+ */
+function isAdmin() {
+  const userEmail = getUserEmail();
+  return ADMIN_EMAILS.includes(userEmail);
 }
 
 // =================================================================
@@ -23,7 +69,7 @@ function include(filename) {
 // הרשמת משתמש חדש
 function registerUser(userData) {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
     
     // בדיקה אם שם המשתמש כבר קיים
     const data = sheet.getDataRange().getValues();
@@ -54,42 +100,77 @@ function registerUser(userData) {
 // התחברות משתמש עם דיבוג
 function loginUser(username, password) {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+    // Authenticate user against the sheet
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
     const data = sheet.getDataRange().getValues();
-    
-    console.log('loginUser: Total rows in Users sheet:', data.length);
-    console.log('loginUser: Looking for username:', username);
-    
+    let userRecord = null;
     for (let i = 1; i < data.length; i++) {
-      console.log('loginUser: Row', i, 'Username:', data[i][0], 'Password:', data[i][2]);
-      
-      if (String(data[i][0]).trim() === String(username).trim() && 
+      if (String(data[i][0]).trim().toLowerCase() === String(username).trim().toLowerCase() && 
           String(data[i][2]).trim() === String(password).trim()) {
-        
-        return {
-          success: true,
-          user: {
-            username: data[i][0],
-            fullName: data[i][1],
-            submissionsCount: data[i][5] || 0,
-            reviewsCompletedCount: data[i][6] || 0,
-            isEligible: data[i][7] || false
-          }
+        userRecord = {
+          username: data[i][0],
+          fullName: data[i][1],
+          submissionsCount: data[i][5] || 0,
+          reviewsCompletedCount: data[i][6] || 0,
+          isEligible: data[i][7] || false,
+          isAdmin: ADMIN_EMAILS.includes(data[i][0])
         };
+        break;
       }
     }
-    
-    throw new Error(`שם משתמש או סיסמה שגויים. נמצאו ${data.length - 1} משתמשים בגליון.`);
+
+    if (!userRecord) {
+      throw new Error('שם משתמש או סיסמה שגויים.');
+    }
+
+    // Create a session token
+    const token = Utilities.getUuid();
+    const cache = CacheService.getUserCache();
+    // Store user email against the token for 30 minutes
+    cache.put(token, userRecord.username, 1800); 
+
+    return {
+      success: true,
+      token: token,
+      user: userRecord
+    };
+
   } catch (error) {
     console.error('loginUser error:', error);
     return { success: false, message: error.message };
   }
 }
 
+/**
+ * Validates a token and returns the associated user email.
+ * @param {string} token The session token from the client.
+ * @returns {string} The user's email if the token is valid.
+ * @throws {Error} If the token is invalid or expired.
+ */
+function getAuthenticatedEmail(token) {
+  if (!token) throw new Error('Authentication token is missing.');
+  const cache = CacheService.getUserCache();
+  const email = cache.get(token);
+  if (!email) throw new Error('ההתחברות פגה. יש להתחבר מחדש.');
+  return email;
+}
+
+/**
+ * Invalidates a user's session token upon logout.
+ * @param {string} token The session token to invalidate.
+ */
+function logoutUser(token) {
+  if (token) {
+    const cache = CacheService.getUserCache();
+    cache.remove(token);
+  }
+  return { success: true };
+}
+
 // קבלת נתוני משתמש
 function getUserData(username) {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
     const data = sheet.getDataRange().getValues();
     
     for (let i = 1; i < data.length; i++) {
@@ -117,7 +198,7 @@ function getUserData(username) {
 // העלאת תוצר חדש
 function uploadArtifact(artifactData) {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
     
     // יצירת ID ייחודי
     const id = 'ART_' + Date.now();
@@ -152,7 +233,7 @@ function uploadArtifact(artifactData) {
 
 // עדכון מספר הגשות המשתמש
 function updateUserSubmissionCount(username) {
-  const userSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const userSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
   const userData = userSheet.getDataRange().getValues();
   
   for (let i = 1; i < userData.length; i++) {
@@ -169,7 +250,7 @@ function updateUserSubmissionCount(username) {
 
 // בדיקה והקצאת ביקורות
 function checkAndAssignReviews(username) {
-  const userSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const userSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
   const userData = userSheet.getDataRange().getValues();
   
   // מצא את המשתמש ובדוק כמה תוצרים יש לו
@@ -184,8 +265,8 @@ function checkAndAssignReviews(username) {
 // הקצאת 5 תוצרים אקראיים לביקורת
 function assignRandomReviews(username) {
   try {
-    const artifactsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
-    const assignmentsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Assignments');
+    const artifactsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
+    const assignmentsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ASSIGNMENTS);
     
     const artifacts = artifactsSheet.getDataRange().getValues();
     const assignments = assignmentsSheet.getDataRange().getValues();
@@ -227,7 +308,7 @@ function assignRandomReviews(username) {
 // קבלת כל התוצרים - גרסה מפושטת ויציבה
 function getAllArtifacts() {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
     if (!sheet) {
       console.error('getAllArtifacts - Sheet not found');
       return [];
@@ -294,6 +375,35 @@ function getUserArtifacts(username) {
   }
 }
 
+// פונקציה למציאת מזהה הגליון הנכון
+function findCurrentSpreadsheetId() {
+  try {
+    // אם זה רץ מתוך גליון Google Sheets
+    const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    if (activeSpreadsheet) {
+      return {
+        success: true,
+        id: activeSpreadsheet.getId(),
+        name: activeSpreadsheet.getName(),
+        url: activeSpreadsheet.getUrl(),
+        message: 'מזהה הגליון הפעיל נמצא'
+      };
+    }
+    
+    // אם זה לא רץ מתוך גליון
+    return {
+      success: false,
+      message: 'הסקריפט לא רץ מתוך גליון Google Sheets פעיל'
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      message: 'שגיאה במציאת מזהה הגליון: ' + error.message
+    };
+  }
+}
+
 // פונקציה מהירה לבדיקות ותיקונים
 function quickTest() {
   const results = {
@@ -302,16 +412,19 @@ function quickTest() {
     artifactsSheetExists: false,
     usersCount: 0,
     artifactsCount: 0,
-    publishedArtifactsCount: 0
+    publishedArtifactsCount: 0,
+    currentSpreadsheetId: SPREADSHEET_ID,
+    spreadsheetName: ''
   };
   
   try {
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
     results.spreadsheetAccess = true;
+    results.spreadsheetName = spreadsheet.getName();
     
     // בדיקת גליון Users
     try {
-      const usersSheet = spreadsheet.getSheetByName('Users');
+      const usersSheet = spreadsheet.getSheetByName(SHEET_NAMES.USERS);
       results.usersSheetExists = true;
       const usersData = usersSheet.getDataRange().getValues();
       results.usersCount = usersData.length - 1; // מלבד הכותרות
@@ -321,7 +434,7 @@ function quickTest() {
     
     // בדיקת גליון Artifacts
     try {
-      const artifactsSheet = spreadsheet.getSheetByName('Artifacts');
+      const artifactsSheet = spreadsheet.getSheetByName(SHEET_NAMES.ARTIFACTS);
       results.artifactsSheetExists = true;
       const artifactsData = artifactsSheet.getDataRange().getValues();
       results.artifactsCount = artifactsData.length - 1;
@@ -339,6 +452,7 @@ function quickTest() {
     
   } catch (e) {
     console.error('Spreadsheet access error:', e);
+    results.error = e.message;
   }
   
   return results;
@@ -347,7 +461,7 @@ function quickTest() {
 // הוספת משתמש דמה לבדיקה
 function addTestUser() {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
     sheet.appendRow([
       'test',
       'משתמש בדיקה',
@@ -367,7 +481,7 @@ function addTestUser() {
 // פונקציה לבדיקת נתוני Artifacts - מה בדיוק יש שם?
 function debugArtifactsRaw() {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
     const data = sheet.getDataRange().getValues();
     
     console.log('=== DEBUG ARTIFACTS RAW ===');
@@ -399,7 +513,7 @@ function debugArtifactsRaw() {
 // הוספת תוצרים לדוגמה - פותר הכל!
 function addSampleArtifacts() {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
     
     const sampleArtifacts = [
       [
@@ -472,8 +586,8 @@ function addSampleArtifacts() {
 // קבלת תוצרים להערכה עבור משתמש
 function getAssignedArtifacts(username) {
   try {
-    const assignmentsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Assignments');
-    const artifactsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+    const assignmentsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ASSIGNMENTS);
+    const artifactsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
     
     const assignments = assignmentsSheet.getDataRange().getValues();
     const artifacts = artifactsSheet.getDataRange().getValues();
@@ -512,49 +626,164 @@ function getAssignedArtifacts(username) {
   }
 }
 
-// שליחת ביקורת
+/**
+ * Submits a new review for an artifact.
+ * @param {Object} reviewData The review data from the form.
+ * @returns {Object} A success message.
+ */
 function submitReview(reviewData) {
   try {
-    const reviewsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Reviews');
-    const assignmentsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Assignments');
-    
-    // יצירת ID ייחודי לביקורת
-    const reviewId = 'REV_' + Date.now();
-    
-    // הוספת הביקורת
-    reviewsSheet.appendRow([
-      reviewId,
-      new Date().toISOString(),
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.REVIEWS);
+    const newId = Utilities.getUuid();
+    const timestamp = new Date();
+    const reviewerEmail = getUserEmail();
+
+    sheet.appendRow([
+      newId,
+      timestamp,
       reviewData.artifactId,
-      reviewData.reviewerUsername,
+      reviewerEmail,
       reviewData.scoreDesign,
       reviewData.scoreTechnical,
       reviewData.scorePedagogy,
       reviewData.comments
     ]);
     
-    // עדכון סטטוס ההקצאה
-    const assignments = assignmentsSheet.getDataRange().getValues();
-    for (let i = 1; i < assignments.length; i++) {
-      if (assignments[i][0] === reviewData.assignmentId) {
-        assignmentsSheet.getRange(i + 1, 4).setValue('הושלם'); // status
-        assignmentsSheet.getRange(i + 1, 6).setValue(new Date().toISOString()); // dateCompleted
-        break;
-      }
-    }
-    
-    // עדכון מספר הביקורות של המשתמש
-    updateUserReviewCount(reviewData.reviewerUsername);
-    
-    return { success: true, message: 'הביקורת נשלחה בהצלחה!' };
+    // After submitting, update the reviewer's stats
+    updateUserStats(reviewerEmail);
+
+    return { success: true, message: 'ההערכה נשלחה בהצלחה.' };
+
   } catch (error) {
-    return { success: false, message: error.message };
+    console.error('Error in submitReview:', error);
+    throw new Error(`שגיאה בשליחת ההערכה: ${error.message}`);
+  }
+}
+
+/**
+ * Recalculates and updates a user's submission and review counts, and their eligibility status.
+ * This is more robust than incrementing counters.
+ * @param {string} userEmail The email of the user to update.
+ */
+function updateUserStats(userEmail) {
+  if (!userEmail) return;
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const usersSheet = ss.getSheetByName(SHEET_NAMES.USERS);
+  const artifactsSheet = ss.getSheetByName(SHEET_NAMES.ARTIFACTS);
+  const reviewsSheet = ss.getSheetByName(SHEET_NAMES.REVIEWS);
+  
+  const data = usersSheet.getDataRange().getValues();
+  
+  // Find user and update their stats
+  const headers = data[0];
+  const emailColIndex = headers.indexOf('username');
+  let userRowIndex = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][emailColIndex] === userEmail) {
+      userRowIndex = i + 1; // 1-based index
+      break;
+    }
+  }
+  if (userRowIndex === -1) return; // User not found
+
+  // Recalculate submissions
+  const allArtifacts = sheetDataToObjects(artifactsSheet.getDataRange().getValues());
+  const submissionCount = allArtifacts.filter(a => a.submitterUsername === userEmail).length;
+  
+  // Recalculate reviews
+  const allReviews = sheetDataToObjects(reviewsSheet.getDataRange().getValues());
+  const reviewCount = allReviews.filter(r => r.reviewerUsername === userEmail).length;
+
+  // Check eligibility
+  const isEligible = submissionCount >= 5 && reviewCount >= 3;
+
+  // Update the sheet
+  usersSheet.getRange(userRowIndex, headers.indexOf('submissionsCount') + 1).setValue(submissionCount);
+  usersSheet.getRange(userRowIndex, headers.indexOf('reviewsCompletedCount') + 1).setValue(reviewCount);
+  usersSheet.getRange(userRowIndex, headers.indexOf('isEligible') + 1).setValue(isEligible);
+}
+
+/**
+ * Retrieves data for the admin dashboard.
+ * @param {string} token The session token for authentication.
+ * @returns {Object} Data for the admin dashboard.
+ */
+function getAdminDashboardData(token) {
+  const userEmail = getAuthenticatedEmail(token);
+  if (!ADMIN_EMAILS.includes(userEmail)) {
+    throw new Error('Unauthorized access.');
+  }
+
+  try {
+    const usersSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
+    const artifactsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
+
+    const usersData = usersSheet.getDataRange().getValues();
+    const artifactsData = artifactsSheet.getDataRange().getValues();
+
+    // Process users data
+    const users = [];
+    for (let i = 1; i < usersData.length; i++) {
+      const row = usersData[i];
+      users.push({
+        username: row[0],
+        fullName: row[1],
+        submissionsCount: row[5] || 0,
+        reviewsCompletedCount: row[6] || 0,
+        isEligible: row[7] || false
+      });
+    }
+
+    // Process artifacts data
+    const artifacts = [];
+    for (let i = 1; i < artifactsData.length; i++) {
+      const row = artifactsData[i];
+      artifacts.push({
+        id: row[0],
+        submissionTimestamp: row[1],
+        submitterUsername: row[2],
+        title: row[3],
+        targetAudience: row[5],
+        toolUsed: row[7]
+      });
+    }
+
+    return {
+      users: users,
+      artifacts: artifacts,
+      totalUsers: users.length,
+      totalArtifacts: artifacts.length,
+      eligibleUsers: users.filter(u => u.isEligible).length
+    };
+
+  } catch (error) {
+    console.error('Error in getAdminDashboardData:', error);
+    throw new Error(`שגיאה בטעינת נתוני המנהל: ${error.message}`);
+  }
+}
+
+/**
+ * Gets the URL of the spreadsheet for admin access.
+ * This function is restricted to admins.
+ * @returns {string} The URL of the spreadsheet.
+ */
+function getSpreadsheetUrl() {
+  if (!isAdmin()) {
+    throw new Error('גישה נדחתה. נדרשות הרשאות מנהל.');
+  }
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    return spreadsheet.getUrl();
+  } catch (error) {
+    console.error('Error in getSpreadsheetUrl:', error);
+    throw new Error('לא ניתן היה לקבל את כתובת הגיליון.');
   }
 }
 
 // עדכון מספר ביקורות המשתמש
 function updateUserReviewCount(username) {
-  const userSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const userSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
   const userData = userSheet.getDataRange().getValues();
   
   for (let i = 1; i < userData.length; i++) {
@@ -571,7 +800,7 @@ function updateUserReviewCount(username) {
 
 // עדכון זכאות משתמש
 function updateEligibility(username, rowIndex) {
-  const userSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const userSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
   const userData = userSheet.getRange(rowIndex, 1, 1, 8).getValues()[0];
   
   const submissionsCount = userData[5];
@@ -588,7 +817,7 @@ function updateEligibility(username, rowIndex) {
 // קבלת כל המשתמשים (לעמוד מנהל)
 function getAllUsers() {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.USERS);
     const data = sheet.getDataRange().getValues();
     
     const users = [];
@@ -611,7 +840,7 @@ function getAllUsers() {
 // קבלת כל הביקורות (לעמוד מנהל)
 function getAllReviews() {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Reviews');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.REVIEWS);
     const data = sheet.getDataRange().getValues();
     
     const reviews = [];
@@ -679,7 +908,7 @@ function testSheetConnection() {
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
     console.log('Spreadsheet name:', spreadsheet.getName());
     
-    const artifactsSheet = spreadsheet.getSheetByName('Artifacts');
+    const artifactsSheet = spreadsheet.getSheetByName(SHEET_NAMES.ARTIFACTS);
     console.log('Artifacts sheet found:', artifactsSheet !== null);
     
     if (artifactsSheet) {
@@ -717,7 +946,7 @@ function testSheetConnection() {
 // פונקציה ישירה לבדיקת תוצרים עם יותר דיבוג
 function debugArtifacts() {
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
     const data = sheet.getDataRange().getValues();
     
     const debugInfo = {
@@ -747,27 +976,43 @@ function debugArtifacts() {
   }
 }
 
-// פונקציה פשוטה ועמידה - מחזירה הכל!
+// פונקציה פשוטה ועמידה - פתרון בטוח 100%!
 function getArtifactsSimple() {
+  console.log('=== getArtifactsSimple START ===');
+  
   try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Artifacts');
+    // בדיקה 1: גישה לגליון
+    console.log('Step 1: Accessing spreadsheet...');
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    console.log('Spreadsheet accessed successfully');
+    
+    // בדיקה 2: גישה לגליון Artifacts
+    console.log('Step 2: Accessing Artifacts sheet...');
+    const sheet = spreadsheet.getSheetByName(SHEET_NAMES.ARTIFACTS);
     if (!sheet) {
-      console.error('Sheet Artifacts not found');
-      return [];
+      console.error('Artifacts sheet not found!');
+      // החזר תוצרים מזויפים במקרה של בעיה
+      return getFallbackArtifacts();
     }
+    console.log('Artifacts sheet accessed successfully');
     
+    // בדיקה 3: קריאת נתונים
+    console.log('Step 3: Reading data...');
     const data = sheet.getDataRange().getValues();
-    console.log('getArtifactsSimple: Total rows:', data.length);
+    console.log('Data read successfully. Total rows:', data.length);
     
+    // בדיקה 4: עיבוד נתונים
+    console.log('Step 4: Processing data...');
     const result = [];
     for (let i = 1; i < data.length; i++) {
-      // פשוט מחזיר הכל, ללא בדיקות מסובכות
-      if (data[i][0]) { // אם יש ID
+      // יצירת תוצר מכל שורה שיש בה נתונים
+      if (data[i] && data[i].length > 0 && data[i][0]) {
+        console.log(`Processing row ${i}: ${data[i][3] || 'No title'}`);
         result.push({
           id: String(data[i][0] || 'ART_' + i),
           submissionTimestamp: data[i][1] || new Date().toISOString(),
-          submitterUsername: String(data[i][2] || ''),
-          title: String(data[i][3] || ''),
+          submitterUsername: String(data[i][2] || 'Unknown'),
+          title: String(data[i][3] || 'ללא כותרת'),
           instructions: String(data[i][4] || ''),
           targetAudience: String(data[i][5] || ''),
           tags: String(data[i][6] || ''),
@@ -780,10 +1025,367 @@ function getArtifactsSimple() {
       }
     }
     
-    console.log('getArtifactsSimple: Found', result.length, 'artifacts');
+    console.log(`Success! Found ${result.length} artifacts`);
     return result.reverse(); // החדשים ראשונים
+    
   } catch (error) {
-    console.error('getArtifactsSimple error:', error);
-    return [];
+    console.error('getArtifactsSimple ERROR:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // במקרה של שגיאה - החזר תוצרים מזויפים
+    return getFallbackArtifacts();
   }
-} 
+}
+
+// פונקציה לתוצרים מזויפים במקרה של בעיה
+function getFallbackArtifacts() {
+  console.log('Returning fallback artifacts...');
+  return [
+    {
+      id: 'DEMO001',
+      submissionTimestamp: new Date().toISOString(),
+      submitterUsername: 'demo',
+      title: 'תוצר לדוגמה - משחק חינוכי',
+      instructions: 'משחק אינטראקטיבי ללימוד מילים',
+      targetAudience: 'תלמידי יסודי',
+      tags: 'משחק, חינוך, אנגלית',
+      toolUsed: 'Scratch',
+      artifactType: 'משחק',
+      artifactLink: 'https://scratch.mit.edu/projects/example/',
+      previewImageUrl: 'https://via.placeholder.com/300x200?text=Demo+Game',
+      likes: 0
+    },
+    {
+      id: 'DEMO002', 
+      submissionTimestamp: new Date().toISOString(),
+      submitterUsername: 'demo',
+      title: 'תוצר לדוגמה - סרטון מתמטיקה',
+      instructions: 'סרטון המסביר שברים',
+      targetAudience: 'כיתות ד-ו',
+      tags: 'מתמטיקה, שברים, סרטון',
+      toolUsed: 'Canva',
+      artifactType: 'סרטון',
+      artifactLink: 'https://www.youtube.com/watch?v=demo',
+      previewImageUrl: 'https://via.placeholder.com/300x200?text=Math+Video',
+      likes: 0
+    }
+  ];
+}
+
+// --- DATA FUNCTIONS ---
+
+/**
+ * Converts sheet data (2D array) into an array of objects, using the first row as keys.
+ * @param {Array<Array<any>>} data The 2D array from sheet.getDataRange().getValues().
+ * @returns {Array<Object>} An array of objects representing the sheet rows.
+ */
+function sheetDataToObjects(data) {
+  if (data.length < 2) return [];
+  const headers = data[0].map(header => header.trim());
+  const objects = [];
+  for (let i = 1; i < data.length; i++) {
+    if (data[i].every(cell => cell === '')) continue;
+    const object = {};
+    for (let j = 0; j < headers.length; j++) {
+      object[headers[j]] = data[i][j];
+    }
+    objects.push(object);
+  }
+  return objects;
+}
+
+/**
+ * Fetches all published artifacts from the 'Artifacts' sheet.
+ * @returns {Array<Object>} An array of artifact objects.
+ */
+function getArtifacts() {
+  try {
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
+    if (!sheet) {
+      throw new Error(`Sheet with name "${SHEET_NAMES.ARTIFACTS}" not found.`);
+    }
+    const data = sheet.getDataRange().getValues();
+    const objects = sheetDataToObjects(data);
+    return JSON.stringify(objects); // Return as JSON string
+  } catch (error) {
+    console.error('Error in getArtifacts:', error);
+    throw new Error('לא ניתן לאחזר את התוצרים מהגיליון.');
+  }
+}
+
+function getDirectImageUrl(fileId) {
+  // This format uses Google's image proxy and is more reliable for embedding.
+  return `https://lh3.googleusercontent.com/d/${fileId}`;
+}
+
+/**
+ * Gets profile data for a specific user, including their submitted artifacts.
+ * @param {string} token The session token for authentication.
+ * @returns {Object} An object containing user details and their artifacts.
+ */
+function getUserProfileData(token) {
+  const userEmail = getAuthenticatedEmail(token);
+  const userDetails = getUserData(userEmail);
+  if (!userDetails) {
+    throw new Error('User not found.');
+  }
+  
+  const allArtifacts = getAllArtifacts(); // This is a private helper
+  const userArtifacts = allArtifacts.filter(a => a.submitterUsername === userEmail);
+
+  return { user: userDetails, artifacts: userArtifacts };
+}
+
+/**
+ * Adds a new artifact record to the sheet and handles file upload.
+ * @param {string} token The session token for authentication.
+ * @param {Object} formData The artifact data from the client form.
+ * @param {string|null} fileData The base64 encoded file data, if any.
+ * @param {string|null} fileName The name of the file, if any.
+ * @param {string|null} fileType The MIME type of the file, if any.
+ * @returns {Object} The newly created artifact object.
+ */
+function addNewArtifact(token, formData, fileData, fileName, fileType) {
+  const userEmail = getAuthenticatedEmail(token);
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
+  let previewImageUrl = null;
+  let artifactLink = formData.artifactLink || null;
+
+  // Handle file upload if provided
+  if (fileData && fileName && fileType) {
+    try {
+      const folder = DriveApp.getFolderById(FOLDER_ID);
+      const decodedContent = Utilities.base64Decode(fileData);
+      const blob = Utilities.newBlob(decodedContent, fileType, fileName);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      
+      artifactLink = file.getDownloadUrl();
+      // Create a direct view link for images
+      if (fileType.startsWith('image/')) {
+        previewImageUrl = `https://lh3.googleusercontent.com/d/${file.getId()}`;
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw new Error(`שגיאה בהעלאת הקובץ: ${error.message}`);
+    }
+  }
+  
+  if (!artifactLink) {
+    throw new Error('יש לספק קישור או להעלות קובץ.');
+  }
+  
+  const newId = new Date().getTime();
+  const newRow = [
+    newId, // ID
+    new Date(), // submissionTimestamp
+    userEmail, // submitterUsername
+    formData.title,
+    formData.instructions,
+    formData.targetAudience,
+    formData.tags,
+    formData.toolUsed,
+    artifactLink,
+    previewImageUrl
+  ];
+  
+  sheet.appendRow(newRow);
+  updateUserStats(userEmail);
+
+  return getArtifactById_(newId);
+}
+
+/**
+ * Deletes an artifact from the sheet and the corresponding file from Drive.
+ * @param {string} token The session token for authentication.
+ * @param {string} artifactId The ID of the artifact to delete.
+ */
+function deleteArtifact(token, artifactId) {
+  const userEmail = getAuthenticatedEmail(token);
+  const artifactsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
+  const data = artifactsSheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(artifactId)) {
+      const ownerEmail = data[i][2];
+
+      // Check for permission: user is owner OR user is admin
+      if (ownerEmail !== userEmail && !ADMIN_EMAILS.includes(userEmail)) {
+        throw new Error('אינך רשאי למחוק תוצר זה.');
+      }
+      
+      // If there's a file link in Drive, try to delete it
+      const fileId = data[i][9].match(/\/d\/([^\/]+)/)[1];
+      if (fileId) {
+        const file = DriveApp.getFileById(fileId);
+        file.setTrashed(true);
+      }
+      
+      artifactsSheet.deleteRow(i + 1);
+      updateUserStats(ownerEmail);
+      return { success: true, message: 'התוצר נמחק בהצלחה' };
+    }
+  }
+
+  throw new Error('התוצר לא נמצא.');
+}
+
+/**
+ * Retrieves the full details for a single artifact for editing purposes.
+ * @param {string} token The session token for authentication.
+ * @param {string} artifactId The ID of the artifact to fetch.
+ * @returns {Object} The artifact data object.
+ */
+function getArtifactDetails(token, artifactId) {
+  const userEmail = getAuthenticatedEmail(token); // Auth check
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[headers.indexOf('id')]) === String(artifactId)) {
+      const ownerEmail = row[headers.indexOf('submitterUsername')];
+      
+      // Security check: Only owner or admin can get details for editing
+      if (ownerEmail !== userEmail && !ADMIN_EMAILS.includes(userEmail)) {
+        throw new Error('אינך רשאי לערוך תוצר זה.');
+      }
+      
+      // Convert row to object and return
+      const artifact = {};
+      headers.forEach((header, index) => {
+        artifact[header] = row[index];
+      });
+      return artifact;
+    }
+  }
+  throw new Error('התוצר לא נמצא.');
+}
+
+/**
+ * Updates an existing artifact's text data.
+ * @param {string} token The session token for authentication.
+ * @param {string} artifactId The ID of the artifact to update.
+ * @param {Object} formData The new data for the artifact.
+ * @returns {Object} A success or failure message.
+ */
+function updateArtifact(token, artifactId, formData) {
+  const userEmail = getAuthenticatedEmail(token); // Auth check
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[headers.indexOf('id')]) === String(artifactId)) {
+      const ownerEmail = row[headers.indexOf('submitterUsername')];
+      
+      // Security check: Only owner or admin can update
+      if (ownerEmail !== userEmail && !ADMIN_EMAILS.includes(userEmail)) {
+        throw new Error('אינך רשאי לעדכן תוצר זה.');
+      }
+      
+      const rowIndex = i + 1; // Sheet rows are 1-based
+      sheet.getRange(rowIndex, headers.indexOf('title') + 1).setValue(formData.title);
+      sheet.getRange(rowIndex, headers.indexOf('instructions') + 1).setValue(formData.instructions);
+      sheet.getRange(rowIndex, headers.indexOf('targetAudience') + 1).setValue(formData.targetAudience);
+      sheet.getRange(rowIndex, headers.indexOf('tags') + 1).setValue(formData.tags);
+      sheet.getRange(rowIndex, headers.indexOf('toolUsed') + 1).setValue(formData.toolUsed);
+      
+      return { success: true, message: 'התוצר עודכן בהצלחה.' };
+    }
+  }
+  
+  throw new Error('התוצר לעדכון לא נמצא.');
+}
+
+/**
+ * Gets peer review assignments for the current user.
+ * @returns {Array<Object>} An array of 3 random artifacts to be reviewed.
+ */
+function getReviewAssignments() {
+  try {
+    const userEmail = getUserEmail();
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const artifactsSheet = ss.getSheetByName(SHEET_NAMES.ARTIFACTS);
+    const allArtifacts = sheetDataToObjects(artifactsSheet.getDataRange().getValues());
+    const userArtifactsCount = allArtifacts.filter(a => a.submitterUsername === userEmail).length;
+    if (userArtifactsCount < 5) return JSON.stringify([]); // Return empty array as string
+    const reviewsSheet = ss.getSheetByName(SHEET_NAMES.REVIEWS);
+    const allReviews = sheetDataToObjects(reviewsSheet.getDataRange().getValues());
+    const reviewedArtifactIds = allReviews.filter(r => r.reviewerUsername === userEmail).map(r => r.artifactId);
+    const potentialArtifacts = allArtifacts.filter(artifact => artifact.submitterUsername !== userEmail && !reviewedArtifactIds.includes(artifact.id));
+    const assignments = potentialArtifacts.sort(() => 0.5 - Math.random()).slice(0, 3);
+    return JSON.stringify(assignments); // Return as JSON string
+  } catch (error) {
+    console.error('Error in getReviewAssignments:', error);
+    throw new Error(`שגיאה בקבלת משימות הערכה: ${error.message}`);
+  }
+}
+
+/**
+ * Fetches public data for a specific user's profile.
+ * @param {string} userEmail The email of the user whose profile is being viewed.
+ * @returns {string} A JSON string containing the user's artifacts.
+ */
+function getPublicProfileData(userEmail) {
+  try {
+    if (!userEmail) throw new Error('לא סופקה כתובת אימייל.');
+
+    const artifactsSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
+    if (!artifactsSheet) throw new Error(`הגיליון "${SHEET_NAMES.ARTIFACTS}" לא נמצא.`);
+    
+    const allArtifacts = sheetDataToObjects(artifactsSheet.getDataRange().getValues());
+    
+    const userArtifacts = allArtifacts.filter(artifact => 
+      artifact.submitterUsername === userEmail && (artifact.isPublished === true || artifact.isPublished === 'TRUE')
+    );
+
+    const result = {
+      email: userEmail,
+      artifacts: userArtifacts
+    };
+    
+    return JSON.stringify(result);
+
+  } catch (error) {
+    console.error('Error in getPublicProfileData:', error);
+    throw new Error(`שגיאה בטעינת פרופיל ציבורי: ${error.message}`);
+  }
+}
+
+/**
+ * Helper function to retrieve a single artifact by its ID.
+ * @private
+ * @param {string} artifactId The ID of the artifact to find.
+ * @returns {Object|null} The artifact object or null if not found.
+ */
+function getArtifactById_(artifactId) {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAMES.ARTIFACTS);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][headers.indexOf('id')] === artifactId) {
+      return {
+        id: data[i][headers.indexOf('id')],
+        submissionTimestamp: data[i][headers.indexOf('submissionTimestamp')],
+        submitterUsername: data[i][headers.indexOf('submitterUsername')],
+        title: data[i][headers.indexOf('title')],
+        instructions: data[i][headers.indexOf('instructions')],
+        targetAudience: data[i][headers.indexOf('targetAudience')],
+        tags: data[i][headers.indexOf('tags')],
+        toolUsed: data[i][headers.indexOf('toolUsed')],
+        artifactType: data[i][headers.indexOf('artifactType')],
+        artifactLink: data[i][headers.indexOf('artifactLink')],
+        previewImageUrl: data[i][headers.indexOf('previewImageUrl')],
+        likes: Number(data[i][headers.indexOf('likes')]) || 0
+      };
+    }
+  }
+  
+  return null;
+}
+

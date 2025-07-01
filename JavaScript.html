@@ -1,0 +1,964 @@
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // --- STATE ---
+  let currentUser = null;
+  let allArtifacts = [];
+  
+  // --- SELECTORS ---
+  const pages = document.querySelectorAll('.page');
+  const navLinks = {
+    gallery: document.getElementById('nav-gallery'),
+    upload: document.getElementById('nav-upload'),
+    profile: document.getElementById('nav-profile'),
+    admin: document.getElementById('nav-admin')
+  };
+  const loader = document.getElementById('loader');
+  const userInfo = document.getElementById('user-info');
+  const galleryContainer = document.getElementById('gallery-container');
+  const uploadForm = document.getElementById('upload-form');
+  const profileStats = document.getElementById('profile-stats');
+  const profileArtifactsContainer = document.getElementById('profile-artifacts-container');
+  const reviewAssignmentsContainer = document.getElementById('review-assignments-container');
+  const navReview = document.createElement('a');
+  navReview.href = '#';
+  navReview.id = 'nav-review';
+  navReview.textContent = 'הערכת עמיתים';
+  navReview.style.display = 'none'; // Hidden by default
+  const loginModal = document.getElementById('login-modal');
+  const loginButton = document.getElementById('login-button');
+  const closeButton = document.querySelector('.close-button');
+  const loginForm = document.getElementById('login-form');
+  
+  // Insert the new nav link
+  navLinks.profile.parentNode.insertBefore(navReview, navLinks.admin);
+  navLinks.review = navReview;
+
+  // --- FUNCTIONS ---
+
+  /**
+   * Shows a specific page and hides all others.
+   * @param {string} pageId The ID of the page to show.
+   */
+  const showPage = (pageId) => {
+    pages.forEach(page => {
+      page.style.display = page.id === pageId ? 'block' : 'none';
+    });
+    // Update active nav link
+    for (const link in navLinks) {
+        navLinks[link].classList.remove('active');
+    }
+    const activeLink = document.getElementById(`nav-${pageId.split('-')[1]}`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+  };
+
+  /**
+   * Shows or hides the loader animation.
+   * @param {boolean} show True to show, false to hide.
+   */
+  const showLoader = (show) => {
+    const loader = document.getElementById('loader');
+    if(loader) {
+      loader.style.display = show ? 'block' : 'none';
+    }
+  };
+
+  /**
+   * Renders the artifacts in the gallery.
+   * @param {Array<Object>} artifacts An array of artifact objects.
+   */
+  const renderGallery = (artifacts) => {
+    galleryContainer.innerHTML = '';
+    if (!artifacts || artifacts.length === 0) {
+      galleryContainer.innerHTML = '<p>לא נמצאו תוצרים.</p>';
+      return;
+    }
+    artifacts.forEach(artifact => {
+      const card = document.createElement('div');
+      card.className = 'artifact-card';
+      card.innerHTML = `
+        <div class="image-container">
+            ${(artifact.previewImageUrl && artifact.previewImageUrl.startsWith('http')) 
+              ? `<img src="${artifact.previewImageUrl}" alt="תצוגה מקדימה של ${artifact.title}" class="artifact-image" onerror="this.style.display='none'">` 
+              : ''}
+          </div>
+        ${artifact.targetAudience ? `<div class="card-chip">${artifact.targetAudience}</div>` : ''}
+        <div class="card-content">
+          <h3>${artifact.title || 'ללא כותרת'}</h3>
+          <p><strong>יוצר/ת:</strong> <a href="#" class="user-link" data-email="${artifact.submitterUsername}">${artifact.submitterUsername}</a></p>
+          <p>${artifact.instructions || ''}</p>
+          <p><strong><small>כלי:</small></strong> ${artifact.toolUsed || 'לא צוין'}</p>
+          <div class="actions">
+             <a href="${artifact.artifactLink}" target="_blank" class="icon-button" title="צפה בתוצר">
+                <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+             </a>
+          </div>
+        </div>
+      `;
+      galleryContainer.appendChild(card);
+    });
+  };
+
+  /**
+   * Initial application setup on page load.
+   */
+  const initializeApp = () => {
+    showLoader(true);
+    // In guest mode, we only load the gallery. No user data needed.
+    loadGallery();
+  };
+
+  /**
+   * Loads and displays the artifact gallery.
+   */
+  const loadGallery = () => {
+    showPage('page-gallery');
+    showLoader(true);
+    google.script.run
+      .withSuccessHandler(jsonString => {
+        try {
+          const artifacts = JSON.parse(jsonString);
+          allArtifacts = artifacts;
+          renderGallery(allArtifacts);
+        } catch (e) {
+          console.error("Failed to parse artifacts:", e);
+          galleryContainer.innerHTML = '<p>שגיאה בעיבוד נתוני הגלריה.</p>';
+        }
+        showLoader(false);
+      })
+      .withFailureHandler(err => {
+        console.error('Error loading gallery:', err);
+        galleryContainer.innerHTML = `<p>שגיאה בטעינת הגלריה: ${err.message}</p>`;
+        showLoader(false);
+      })
+      .getArtifacts();
+  };
+  
+  /**
+   * Loads the upload form.
+   */
+  const loadUploadPage = () => {
+    showPage('page-upload');
+    uploadForm.innerHTML = `
+      <h2 id="upload-title">העלאת תוצר חדש</h2>
+      <div class="form-group">
+        <label for="title">שם התוצר:</label>
+        <input type="text" id="title" name="title" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="instructions">הסבר איך להשתמש בתוצר:</label>
+        <textarea id="instructions" name="instructions" rows="4" required></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="targetAudience">קהל יעד:</label>
+          <input type="text" id="targetAudience" name="targetAudience" placeholder="למשל: כיתה ה'">
+        </div>
+        <div class="form-group">
+          <label for="toolUsed">כלי עבודה ששימש ליצירה:</label>
+          <input type="text" id="toolUsed" name="toolUsed" placeholder="למשל: Genially">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="tags">תגיות (מופרדות בפסיק):</label>
+        <input type="text" id="tags" name="tags" placeholder="למשל: גיאומטריה, משחק">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="artifactLink">קישור לתוצר (אם קיים):</label>
+          <input type="url" id="artifactLink" name="artifactLink" placeholder="https://example.com">
+        </div>
+        <div class="form-group">
+          <label for="artifactFile">או: העלאת קובץ תוצר:</label>
+          <input type="file" id="artifactFile" name="artifactFile">
+        </div>
+      </div>
+      
+      <button type="submit">שליחת תוצר</button>
+      <div id="upload-status"></div>
+    `;
+  };
+
+  /**
+   * Loads the user's profile page, showing their details and submitted artifacts.
+   */
+  const loadProfilePage = () => {
+    if (!currentUser || !currentUser.token) {
+      alert('יש להתחבר כדי לצפות בפרופיל.');
+      return;
+    }
+    showPage('page-profile');
+    showLoader(true);
+    profileArtifactsContainer.innerHTML = '';
+    profileStats.innerHTML = '';
+
+    google.script.run
+      .withSuccessHandler(jsonString => {
+        try {
+          const data = JSON.parse(jsonString);
+          profileStats.innerHTML = `
+            <p><strong>מספר תוצרים שהעלית:</strong> ${data.artifacts.length}</p>
+            <p><strong>מספר הערכות שביצעת:</strong> ${data.reviewCount}</p>
+          `;
+
+          if (data.artifacts.length === 0) {
+            profileArtifactsContainer.innerHTML = '<p>עדיין לא העלית תוצרים.</p>';
+          } else {
+            renderProfileArtifacts(data.artifacts);
+          }
+        } catch (e) {
+          console.error("Failed to parse profile data:", e);
+          profileArtifactsContainer.innerHTML = '<p>שגיאה בעיבוד נתוני הפרופיל.</p>';
+        }
+        showLoader(false);
+
+        // Check for review assignments after profile loads
+        google.script.run
+          .withSuccessHandler(assignString => {
+            const assignments = JSON.parse(assignString);
+            if (assignments && assignments.length > 0) {
+              navLinks.review.style.display = 'inline-block';
+            } else {
+              navLinks.review.style.display = 'none';
+            }
+          })
+          .getReviewAssignments();
+      })
+      .withFailureHandler(err => {
+        console.error('Error loading profile:', err);
+        profileArtifactsContainer.innerHTML = `<p>שגיאה בטעינת הפרופיל: ${err.message}</p>`;
+        showLoader(false);
+      })
+      .getUserProfileData();
+  };
+  
+  /**
+   * Loads the peer review assignment page.
+   */
+  const loadReviewPage = () => {
+    showPage('page-review');
+    showLoader(true);
+    reviewAssignmentsContainer.innerHTML = '';
+    google.script.run
+      .withSuccessHandler(jsonString => {
+        try {
+          const assignments = JSON.parse(jsonString);
+          if (!assignments || assignments.length === 0) {
+            const navReview = document.getElementById('nav-review');
+            if(navReview) navReview.style.display = 'none';
+            reviewAssignmentsContainer.innerHTML = '<p>אין לך משימות הערכה כרגע. נהדר!</p>';
+          } else {
+            renderReviewAssignments(assignments);
+          }
+        } catch (e) {
+          console.error("Failed to parse review assignments:", e);
+          reviewAssignmentsContainer.innerHTML = '<p>שגיאה בעיבוד משימות ההערכה.</p>';
+        }
+        showLoader(false);
+      })
+      .withFailureHandler(err => {
+        reviewAssignmentsContainer.innerHTML = `<p>שגיאה בטעינת משימות: ${err.message}</p>`;
+        showLoader(false);
+      })
+      .getReviewAssignments();
+  };
+
+  /**
+   * Loads the admin dashboard.
+   */
+  const loadAdminPage = () => {
+    if (!currentUser || !currentUser.user.isAdmin) {
+       alert('נדרשות הרשאות מנהל.');
+       return;
+    }
+    showPage('page-admin');
+    showLoader(true);
+    google.script.run
+      .withSuccessHandler(data => {
+        renderAdminPage(data);
+        showLoader(false);
+      })
+      .withFailureHandler(err => {
+        mainContent.innerHTML = `<p class="error">שגיאה בטעינת דף מנהל: ${err.message}</p>`;
+        showLoader(false);
+      })
+      .getAdminDashboardData(currentUser.token);
+  };
+
+  // --- HELPER RENDER FUNCTIONS ---
+  const renderProfileArtifacts = (artifacts) => {
+      artifacts.forEach(artifact => {
+        const card = document.createElement('div');
+        card.className = 'artifact-card';
+        card.innerHTML = `
+          <div class="image-container">
+            ${(artifact.previewImageUrl && artifact.previewImageUrl.startsWith('http')) 
+              ? `<img src="${artifact.previewImageUrl}" alt="תצוגה מקדימה של ${artifact.title}" class="artifact-image" onerror="this.style.display='none'">` 
+              : ''}
+          </div>
+          ${artifact.targetAudience ? `<div class="card-chip">${artifact.targetAudience}</div>` : ''}
+          <div class="card-content">
+            <h3>${artifact.title}</h3>
+            <p>${artifact.instructions}</p>
+            <p><strong><small>כלי:</small></strong> ${artifact.toolUsed || 'לא צוין'}</p>
+            <div class="actions">
+              <a href="${artifact.artifactLink}" target="_blank" class="icon-button" title="צפה בתוצר">
+                <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+              </a>
+              <button class="icon-button edit-btn" data-id="${artifact.id}" title="ערוך">
+                <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg>
+              </button>
+              <button class="icon-button delete-btn" data-id="${artifact.id}" title="מחק">
+                <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+        profileArtifactsContainer.appendChild(card);
+        card.querySelector('.edit-btn').addEventListener('click', () => handleEditArtifactClick(artifact.id));
+        card.querySelector('.delete-btn').addEventListener('click', () => deleteArtifact(artifact.id));
+      });
+  };
+
+  const renderReviewAssignments = (assignments) => {
+      assignments.forEach(artifact => {
+        const assignmentCard = document.createElement('div');
+        assignmentCard.className = 'artifact-card review-assignment';
+        const artifactId = artifact.id; // Unique ID for form elements
+
+        assignmentCard.innerHTML = `
+          <h3>הערכת התוצר: ${artifact.title}</h3>
+          <p><strong>הוראות:</strong> ${artifact.instructions}</p>
+          <a href="${artifact.artifactLink}" target="_blank">פתח את התוצר בחלון חדש</a>
+          <form class="review-form" data-artifact-id="${artifactId}">
+            <h4>דירוג:</h4>
+            
+            <div class="rating-group">
+              <label title="עיצוב התוצר תורם להבנה, מוסיף חיות ועניין">איכות העיצוב:</label>
+              <div class="star-rating">
+                <input type="radio" id="design-5-${artifactId}" name="scoreDesign" value="5" required><label for="design-5-${artifactId}">★</label>
+                <input type="radio" id="design-4-${artifactId}" name="scoreDesign" value="4"><label for="design-4-${artifactId}">★</label>
+                <input type="radio" id="design-3-${artifactId}" name="scoreDesign" value="3"><label for="design-3-${artifactId}">★</label>
+                <input type="radio" id="design-2-${artifactId}" name="scoreDesign" value="2"><label for="design-2-${artifactId}">★</label>
+                <input type="radio" id="design-1-${artifactId}" name="scoreDesign" value="1"><label for="design-1-${artifactId}">★</label>
+              </div>
+            </div>
+
+            <div class="rating-group">
+              <label title="ניצול נבון של יכולות הכלי הטכנולוגי, והתאמה שלו לצורך המדויק">שימוש נכון בטכנולוגיה:</label>
+              <div class="star-rating">
+                <input type="radio" id="tech-5-${artifactId}" name="scoreTechnical" value="5" required><label for="tech-5-${artifactId}">★</label>
+                <input type="radio" id="tech-4-${artifactId}" name="scoreTechnical" value="4"><label for="tech-4-${artifactId}">★</label>
+                <input type="radio" id="tech-3-${artifactId}" name="scoreTechnical" value="3"><label for="tech-3-${artifactId}">★</label>
+                <input type="radio" id="tech-2-${artifactId}" name="scoreTechnical" value="2"><label for="tech-2-${artifactId}">★</label>
+                <input type="radio" id="tech-1-${artifactId}" name="scoreTechnical" value="1"><label for="tech-1-${artifactId}">★</label>
+              </div>
+            </div>
+
+            <div class="rating-group">
+              <label title="התוכן ברמה מתאימה, תורם באופן משמעותי להקניה או לתרגול של החומר הנלמד">איכות פדגוגית:</label>
+              <div class="star-rating">
+                <input type="radio" id="ped-5-${artifactId}" name="scorePedagogy" value="5" required><label for="ped-5-${artifactId}">★</label>
+                <input type="radio" id="ped-4-${artifactId}" name="scorePedagogy" value="4"><label for="ped-4-${artifactId}">★</label>
+                <input type="radio" id="ped-3-${artifactId}" name="scorePedagogy" value="3"><label for="ped-3-${artifactId}">★</label>
+                <input type="radio" id="ped-2-${artifactId}" name="scorePedagogy" value="2"><label for="ped-2-${artifactId}">★</label>
+                <input type="radio" id="ped-1-${artifactId}" name="scorePedagogy" value="1"><label for="ped-1-${artifactId}">★</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="comments-${artifactId}">הערה (לא חובה):</label>
+              <textarea name="comments" id="comments-${artifactId}" rows="3"></textarea>
+            </div>
+            <button type="submit">שלח הערכה</button>
+          </form>
+        `;
+        reviewAssignmentsContainer.appendChild(assignmentCard);
+      });
+  };
+
+  const renderAdminDashboard = (data) => {
+    const container = document.getElementById('admin-content');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Users Table
+    let usersHtml = `<h3>סיכום משתמשים</h3><table class="admin-table">
+        <thead><tr><th>מייל</th><th>הגשות</th><th>הערכות</th><th>זכאות</th></tr></thead><tbody>`;
+    data.usersReport.forEach(user => {
+        usersHtml += `<tr>
+            <td>${user.username}</td>
+            <td>${user.submissionsCount || 0}</td>
+            <td>${user.reviewsCompletedCount || 0}</td>
+            <td>${user.isEligible ? 'כן' : 'לא'}</td>
+        </tr>`;
+    });
+    usersHtml += '</tbody></table>';
+
+    // Artifacts Table
+    let artifactsHtml = `<h3 style="margin-top: 30px;">סיכום תוצרים</h3><table class="admin-table">
+        <thead><tr><th>תוצר</th><th>יוצר/ת</th><th>מס' הערכות</th><th>ממוצע עיצוב</th><th>ממוצע טכני</th><th>ממוצע פדגוגי</th></tr></thead><tbody>`;
+    data.artifactsReport.forEach(artifact => {
+        artifactsHtml += `<tr>
+            <td>${artifact.title}</td>
+            <td>${artifact.submitter}</td>
+            <td>${artifact.reviewCount}</td>
+            <td>${artifact.avgDesign}</td>
+            <td>${artifact.avgTech}</td>
+            <td>${artifact.avgPedagogy}</td>
+        </tr>`;
+    });
+    artifactsHtml += '</tbody></table>';
+
+    container.innerHTML = usersHtml + artifactsHtml;
+  };
+
+  // --- EVENT LISTENERS ---
+  loginButton.addEventListener('click', () => {
+    loginModal.style.display = 'block';
+  });
+
+  closeButton.addEventListener('click', () => {
+    loginModal.style.display = 'none';
+  });
+
+  window.addEventListener('click', (event) => {
+    if (event.target == loginModal) {
+      loginModal.style.display = 'none';
+    }
+  });
+
+  navLinks.gallery.addEventListener('click', (e) => { e.preventDefault(); loadGallery(); });
+  navLinks.upload.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || !currentUser.token) {
+      alert('יש להתחבר כדי להעלות תוצר.');
+      loginModal.style.display = 'block';
+      return;
+    }
+    loadUploadPage();
+  });
+  navLinks.profile.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser) { 
+      alert('יש להתחבר כדי לגשת לפרופיל האישי.');
+      loginModal.style.display = 'block';
+      return; 
+    }
+    loadProfilePage();
+  });
+  navReview.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || !currentUser.user.isEligible) {
+      alert('יש להגיש לפחות 5 תוצרים כדי לגשת להערכת עמיתים.');
+      return;
+    }
+    loadReviewPage();
+  });
+  navLinks.admin.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || !currentUser.user.isAdmin) {
+       alert('נדרשות הרשאות מנהל.');
+       return;
+    }
+    loadAdminPage();
+  });
+
+  uploadForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!currentUser || !currentUser.token) {
+      alert('יש להתחבר כדי להעלות תוצר.');
+      return;
+    }
+
+    const submitButton = uploadForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'שולח...';
+    
+    const formData = {
+      title: uploadForm.title.value,
+      instructions: uploadForm.instructions.value,
+      targetAudience: uploadForm.targetAudience.value,
+      tags: uploadForm.tags.value,
+      toolUsed: uploadForm.toolUsed.value,
+      artifactLink: uploadForm.artifactLink.value
+    };
+
+    const editingId = uploadForm.dataset.editingId;
+
+    if (editingId) {
+      // --- UPDATE ARTIFACT ---
+      google.script.run
+        .withSuccessHandler(response => {
+          if (response.success) {
+            alert(response.message);
+            handleUploadCleanup();
+            loadProfilePage();
+          } else {
+            handleUploadFailure({ message: response.message });
+          }
+        })
+        .withFailureHandler(handleUploadFailure)
+        .updateArtifact(currentUser.token, editingId, formData);
+
+    } else {
+      // --- CREATE NEW ARTIFACT ---
+      const fileInput = document.getElementById('artifactFile');
+      const file = fileInput.files[0];
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const fileData = event.target.result.split(',');
+          const base64Data = fileData.length > 1 ? fileData[1] : '';
+          google.script.run
+            .withSuccessHandler(handleUploadSuccess)
+            .withFailureHandler(handleUploadFailure)
+            .addNewArtifact(currentUser.token, formData, base64Data, file.name, file.type);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        google.script.run
+          .withSuccessHandler(handleUploadSuccess)
+          .withFailureHandler(handleUploadFailure)
+          .addNewArtifact(currentUser.token, formData, null, null, null);
+      }
+    }
+  });
+
+  const handleUploadSuccess = (newArtifact) => {
+    alert('התוצר הועלה בהצלחה!');
+    handleUploadCleanup();
+    loadGallery();
+  };
+
+  const handleUploadFailure = (error) => {
+    alert(`שגיאה בשליחת הטופס: ${error.message}`);
+    handleUploadCleanup();
+  };
+
+  const handleUploadCleanup = () => {
+    const submitButton = uploadForm.querySelector('button[type="submit"]');
+    submitButton.disabled = false;
+    submitButton.textContent = 'שליחת תוצר';
+    uploadForm.reset();
+    
+    // Cleanup edit mode
+    if (uploadForm.dataset.editingId) {
+      delete uploadForm.dataset.editingId;
+      document.getElementById('upload-title').textContent = 'העלאת תוצר חדש';
+      document.getElementById('artifactLink').disabled = false;
+      document.getElementById('artifactFile').disabled = false;
+    }
+  };
+
+  document.body.addEventListener('click', function(event) {
+    // Check for user link click
+    const userLink = event.target.closest('.user-link');
+    if (userLink) {
+        event.preventDefault();
+        const userEmail = userLink.dataset.email;
+        if (userEmail) {
+            showLoader(true);
+            google.script.run
+                .withSuccessHandler(response => {
+                    const data = JSON.parse(response);
+                    renderPublicProfile(data);
+                    showPage('public-profile');
+                    hideSpinner();
+                })
+                .withFailureHandler(showError)
+                .getPublicProfileData(userEmail);
+        }
+    }
+    
+    // Check for edit button click
+    const editBtn = event.target.closest('.edit-btn');
+    if (editBtn) {
+        const artifactId = editBtn.dataset.id;
+        // TODO: Implement edit functionality
+        alert(`תכונת העריכה עבור תוצר ${artifactId} עדיין בפיתוח.`);
+    }
+
+    // Check for delete button click
+    const deleteBtn = event.target.closest('.delete-btn');
+    if (deleteBtn) {
+        const artifactId = deleteBtn.dataset.id;
+        if (confirm(`האם את/ה בטוח/ה שברצונך למחוק את התוצר?`)) {
+            showLoader(true);
+            google.script.run
+                .withSuccessHandler(response => {
+                    showLoader(false);
+                    if (response.success) {
+                        alert('התוצר נמחק בהצלחה.');
+                        loadProfilePage(); // Refresh the profile page to show the change
+                    }
+                })
+                .withFailureHandler(showError)
+                .deleteArtifact(currentUser.token, artifactId);
+        }
+    }
+  });
+
+  document.body.addEventListener('submit', (e) => {
+    if (e.target.classList.contains('review-form')) {
+      e.preventDefault();
+      const form = e.target;
+      const artifactId = form.dataset.artifactId;
+
+      // Extract value from selected radio button for each star rating group
+      const scoreDesign = form.querySelector('input[name="scoreDesign"]:checked')?.value;
+      const scoreTechnical = form.querySelector('input[name="scoreTechnical"]:checked')?.value;
+      const scorePedagogy = form.querySelector('input[name="scorePedagogy"]:checked')?.value;
+      
+      const reviewData = {
+        artifactId: artifactId,
+        scoreDesign: scoreDesign,
+        scoreTechnical: scoreTechnical,
+        scorePedagogy: scorePedagogy,
+        comments: form.comments.value,
+      };
+
+      if (!scoreDesign || !scoreTechnical || !scorePedagogy) {
+        alert('יש לדרג את כל הקריטריונים.');
+        return;
+      }
+
+      showLoader(true);
+      google.script.run
+        .withSuccessHandler(response => {
+          alert('ההערכה נשלחה בהצלחה!');
+          loadReviewPage(); // Refresh the review page
+        })
+        .withFailureHandler(err => {
+          alert(`שגיאה בשליחת ההערכה: ${err.message}`);
+          showLoader(false);
+        })
+        .submitReview(currentUser.token, reviewData);
+    }
+  });
+
+  // --- Rendering Functions ---
+
+  const renderPublicProfile = (data) => {
+    const container = document.getElementById('public-profile-artifacts-container');
+    const title = document.getElementById('public-profile-title');
+    container.innerHTML = '';
+    title.textContent = `התוצרים של ${data.email}`;
+    
+    if (!data.artifacts || data.artifacts.length === 0) {
+        container.innerHTML = '<p>למשתמש זה אין עדיין תוצרים ציבוריים.</p>';
+        return;
+    }
+
+    data.artifacts.forEach(artifact => {
+        const card = document.createElement('div');
+        card.className = 'artifact-card';
+        // Using the same card structure as the main gallery for consistency
+        card.innerHTML = `
+          <div class="image-container">
+            ${(artifact.previewImageUrl && artifact.previewImageUrl.startsWith('http')) 
+              ? `<img src="${artifact.previewImageUrl}" alt="תצוגה מקדימה של ${artifact.title}" class="artifact-image" onerror="this.style.display='none'">` 
+              : ''}
+          </div>
+          ${artifact.targetAudience ? `<div class="card-chip">${artifact.targetAudience}</div>` : ''}
+          <div class="card-content">
+            <h3>${artifact.title || 'ללא כותרת'}</h3>
+            <p>${artifact.instructions || ''}</p>
+            <p><strong><small>כלי:</small></strong> ${artifact.toolUsed || 'לא צוין'}</p>
+            <div class="actions">
+               <a href="${artifact.artifactLink}" target="_blank" class="icon-button" title="צפה בתוצר">
+                  <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+               </a>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+    });
+  };
+
+  // --- Global Helper Functions ---
+  // Spinner functions removed - using showLoader instead
+
+  const showError = (error) => {
+      hideSpinner();
+      console.error('Operation failed:', error);
+      alert('אירעה שגיאה: ' + error.message);
+  };
+
+  // --- INITIALIZATION ---
+  initializeApp();
+
+  // Handle Admin tab click
+  navLinks.admin.addEventListener('click', (e) => {
+    e.preventDefault();
+    showLoader(true);
+    google.script.run
+      .withSuccessHandler(response => {
+        const data = JSON.parse(response);
+        renderAdminDashboard(data);
+        hideSpinner();
+        showPage('admin');
+      })
+      .withFailureHandler(error => {
+        hideSpinner();
+        showError(error);
+        showPage('gallery'); // Go back to gallery on error
+      })
+      .getAdminDashboardData();
+  });
+
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const username = e.target.username.value;
+    const password = e.target.password.value;
+    const statusDiv = document.getElementById('login-status');
+    statusDiv.textContent = 'מתחבר...';
+
+    google.script.run
+      .withSuccessHandler(response => {
+        if (response.success) {
+          handleLoginSuccess(response);
+        } else {
+          statusDiv.textContent = `שגיאת התחברות: ${response.message}`;
+        }
+      })
+      .withFailureHandler(err => {
+        console.error('Login failed:', err);
+        statusDiv.textContent = `שגיאה: ${err.message}`;
+      })
+      .loginUser(username, password);
+  });
+
+  const handleLoginSuccess = (loginData) => {
+    currentUser = {
+      token: loginData.token,
+      user: loginData.user
+    };
+
+    // Update UI
+    const userInfoDiv = document.getElementById('user-info');
+    userInfoDiv.innerHTML = `
+      <span>שלום, ${currentUser.user.fullName}</span>
+      <button id="logout-button" class="button-secondary">התנתקות</button>
+    `;
+    document.getElementById('logout-button').addEventListener('click', handleLogout);
+
+    // Show relevant nav links
+    navLinks.upload.style.display = 'inline-block';
+    navLinks.profile.style.display = 'inline-block';
+    if (currentUser.user.isAdmin) {
+      navLinks.admin.style.display = 'inline-block';
+    }
+    if (currentUser.user.isEligible) {
+      navReview.style.display = 'inline-block';
+    }
+    
+    // Close modal
+    loginModal.style.display = 'none';
+    loginForm.reset();
+    document.getElementById('login-status').textContent = '';
+  };
+
+  const handleLogout = () => {
+    if (currentUser && currentUser.token) {
+      google.script.run.logoutUser(currentUser.token);
+    }
+    currentUser = null;
+    
+    // Update UI
+    const userInfoDiv = document.getElementById('user-info');
+    userInfoDiv.innerHTML = `<button id="login-button" class="button-secondary">התחברות</button>`;
+    document.getElementById('login-button').addEventListener('click', () => {
+      loginModal.style.display = 'block';
+    });
+
+    // Hide nav links
+    navLinks.upload.style.display = 'none';
+    navLinks.profile.style.display = 'none';
+    navLinks.admin.style.display = 'none';
+    navReview.style.display = 'none';
+
+    // Go back to gallery view
+    loadGallery();
+  };
+
+  const handleEditArtifactClick = (artifactId) => {
+    showLoader(true);
+    google.script.run
+      .withSuccessHandler(artifactData => {
+        // Populate the upload form
+        uploadForm.reset();
+        uploadForm.dataset.editingId = artifactId; // Mark as editing
+
+        document.getElementById('upload-title').textContent = 'עריכת תוצר';
+        document.getElementById('title').value = artifactData.title || '';
+        document.getElementById('instructions').value = artifactData.instructions || '';
+        document.getElementById('targetAudience').value = artifactData.targetAudience || '';
+        document.getElementById('tags').value = artifactData.tags || '';
+        document.getElementById('toolUsed').value = artifactData.toolUsed || '';
+        
+        // For simplicity, disable changing the link/file when editing
+        const artifactLinkInput = document.getElementById('artifactLink');
+        const artifactFileInput = document.getElementById('artifactFile');
+        artifactLinkInput.value = artifactData.artifactLink || '';
+        artifactLinkInput.disabled = true;
+        artifactFileInput.disabled = true;
+
+        showPage('page-upload');
+        showLoader(false);
+      })
+      .withFailureHandler(err => {
+        showLoader(false);
+        alert(`שגיאה בטעינת פרטי התוצר: ${err.message}`);
+      })
+      .getArtifactDetails(currentUser.token, artifactId);
+  };
+  
+  /**
+   * Renders the profile page with user data and artifacts.
+   * @param {Object} data The profile data from the server.
+   */
+  const renderProfilePage = (data) => {
+    showPage('page-profile');
+    const profileContent = document.getElementById('profile-content');
+    const userStatsDiv = document.getElementById('user-stats');
+    const profileArtifactsContainer = document.getElementById('profile-artifacts');
+
+    // Update user stats
+    userStatsDiv.innerHTML = `
+      <h3>סטטיסטיקות</h3>
+      <p>תוצרים שהגשת: ${data.user.submissionsCount || 0}</p>
+      <p>הערכות שביצעת: ${data.user.reviewsCompletedCount || 0}</p>
+      <p>סטטוס: ${data.user.isEligible ? 'זכאי להערכת עמיתים' : 'לא זכאי עדיין'}</p>
+    `;
+
+    // Clear and populate artifacts
+    profileArtifactsContainer.innerHTML = '';
+    
+    if (!data.artifacts || data.artifacts.length === 0) {
+      profileArtifactsContainer.innerHTML = '<p>עדיין לא הגשת תוצרים.</p>';
+      return;
+    }
+
+    data.artifacts.forEach(artifact => {
+      const card = document.createElement('div');
+      card.className = 'artifact-card';
+      card.innerHTML = `
+        <h4>${artifact.title}</h4>
+        <p class="artifact-meta">
+          <span class="chip audience-${artifact.targetAudience?.replace(/\s+/g, '-')}">${artifact.targetAudience}</span>
+          <span class="artifact-date">${new Date(artifact.submissionTimestamp).toLocaleDateString('he-IL')}</span>
+        </p>
+        <p class="artifact-description">${artifact.instructions}</p>
+        <div class="actions">
+          <button class="button-icon edit-btn" data-id="${artifact.id}" title="עריכה">✏️</button>
+          <button class="button-icon delete-btn" data-id="${artifact.id}" title="מחיקה">🗑️</button>
+          <a href="${artifact.artifactLink}" target="_blank" class="button-icon view-btn" title="צפייה">👁️</a>
+        </div>
+      `;
+      profileArtifactsContainer.appendChild(card);
+    });
+
+    // Attach event listeners to the new buttons
+    profileArtifactsContainer.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => handleEditArtifactClick(btn.dataset.id));
+    });
+    
+    profileArtifactsContainer.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => deleteArtifact(btn.dataset.id));
+    });
+  };
+
+  /**
+   * Renders the admin dashboard with user and artifact statistics.
+   * @param {Object} data The admin dashboard data from the server.
+   */
+  const renderAdminPage = (data) => {
+    showPage('page-admin');
+    const adminContent = document.getElementById('admin-content');
+    
+    if (!data || typeof data !== 'object') {
+      adminContent.innerHTML = '<p>שגיאה בטעינת נתוני המנהל.</p>';
+      return;
+    }
+    
+    adminContent.innerHTML = `
+      <h2>דשבורד מנהל</h2>
+      
+      <div class="dashboard-stats">
+        <div class="stat-card">
+          <h3>סך המשתמשים</h3>
+          <p class="stat-number">${data.totalUsers || 0}</p>
+        </div>
+        <div class="stat-card">
+          <h3>סך התוצרים</h3>
+          <p class="stat-number">${data.totalArtifacts || 0}</p>
+        </div>
+        <div class="stat-card">
+          <h3>משתמשים זכאים</h3>
+          <p class="stat-number">${data.eligibleUsers || 0}</p>
+        </div>
+      </div>
+
+      <div class="admin-tables">
+        <div class="admin-section">
+          <h3>משתמשים</h3>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>שם מלא</th>
+                <th>מייל</th>
+                <th>תוצרים</th>
+                <th>הערכות</th>
+                <th>זכאות</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(data.users || []).map(user => `
+                <tr>
+                  <td>${user.fullName || ''}</td>
+                  <td>${user.username || ''}</td>
+                  <td>${user.submissionsCount || 0}</td>
+                  <td>${user.reviewsCompletedCount || 0}</td>
+                  <td>${user.isEligible ? '✅' : '❌'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="admin-section">
+          <h3>תוצרים</h3>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>כותרת</th>
+                <th>יוצר</th>
+                <th>קהל יעד</th>
+                <th>תאריך</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(data.artifacts || []).map(artifact => `
+                <tr>
+                  <td>${artifact.title || ''}</td>
+                  <td>${artifact.submitterUsername || ''}</td>
+                  <td>${artifact.targetAudience || ''}</td>
+                  <td>${artifact.submissionTimestamp ? new Date(artifact.submissionTimestamp).toLocaleDateString('he-IL') : ''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  };
+
+});
+</script> 
